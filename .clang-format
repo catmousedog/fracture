@@ -1,0 +1,70 @@
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++20
+
+# Line width
+ColumnLimit: 120
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+NamespaceIndentation: None 
+
+# Braces
+BreakBeforeBraces: Allman
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeElse: true
+  IndentBraces: false
+   
+# Spacing
+SpaceBeforeParens: ControlStatements
+SpaceBeforeAssignmentOperators: true
+SpaceInEmptyBlock: true
+SpacesInContainerLiterals: true
+SpacesInAngles: false
+SpacesInParentheses: false
+
+# Function formatting
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: Inline
+AlwaysBreakAfterReturnType: None
+
+# Arguments & parameters
+BinPackArguments: false
+BinPackParameters: false
+AlignAfterOpenBracket: BlockIndent
+PenaltyBreakBeforeFirstCallParameter: 1
+
+# Alignment
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignOperands: true
+AlignTrailingComments: true
+
+# Includes
+SortIncludes: true
+IncludeBlocks: Preserve
+
+# Pointer/reference style
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# Namespaces
+WrapNamespaceBodyWithEmptyLines: Always
+
+# Templates
+AlwaysBreakTemplateDeclarations: Yes
+
+PackConstructorInitializers: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
