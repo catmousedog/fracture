@@ -28,27 +28,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-// Volk headers
-#ifdef IMGUI_IMPL_VULKAN_USE_VOLK
-#define VOLK_IMPLEMENTATION
-#include <volk.h>
-#endif
-
-// [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to
-// maximize ease of testing and compatibility with old VS compilers. To link
-// with VS2010-era libraries, VS2015+ requires linking with
-// legacy_stdio_definitions.lib, which we do using this pragma. Your own project
-// should not be affected, as you are likely to link with a newer binary of GLFW
-// that is adequate for your version of Visual Studio.
-#if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
-#pragma comment(lib, "legacy_stdio_definitions")
-#endif
-
-// #define APP_USE_UNLIMITED_FRAME_RATE
-#ifdef _DEBUG
-#define APP_USE_VULKAN_DEBUG_REPORT
 static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;
-#endif
 
 // Data
 static VkAllocationCallbacks* g_Allocator      = nullptr;
@@ -77,7 +57,6 @@ static void check_vk_result(VkResult err)
         abort();
 }
 
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(
     VkDebugReportFlagsEXT      flags,
     VkDebugReportObjectTypeEXT objectType,
@@ -98,7 +77,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(
     fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
     return VK_FALSE;
 }
-#endif // APP_USE_VULKAN_DEBUG_REPORT
 
 static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properties, const char* extension)
 {
@@ -111,9 +89,6 @@ static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properti
 static void SetupVulkan(ImVector<const char*> instance_extensions)
 {
     VkResult err;
-#ifdef IMGUI_IMPL_VULKAN_USE_VOLK
-    volkInitialize();
-#endif
 
     // Create Vulkan Instance
     {
@@ -131,33 +106,20 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         // Enable required extensions
         if (IsExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
             instance_extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-#ifdef VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
-        if (IsExtensionAvailable(properties, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
-        {
-            instance_extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-            create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-        }
-#endif
 
         // Enabling validation layers
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
         const char* layers[]            = {"VK_LAYER_KHRONOS_validation"};
         create_info.enabledLayerCount   = 1;
         create_info.ppEnabledLayerNames = layers;
         instance_extensions.push_back("VK_EXT_debug_report");
-#endif
 
         // Create Vulkan Instance
         create_info.enabledExtensionCount   = (uint32_t)instance_extensions.Size;
         create_info.ppEnabledExtensionNames = instance_extensions.Data;
         err                                 = vkCreateInstance(&create_info, g_Allocator, &g_Instance);
         check_vk_result(err);
-#ifdef IMGUI_IMPL_VULKAN_USE_VOLK
-        volkLoadInstance(g_Instance);
-#endif
 
         // Setup the debug report callback
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
         auto f_vkCreateDebugReportCallbackEXT =
             (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkCreateDebugReportCallbackEXT");
         IM_ASSERT(f_vkCreateDebugReportCallbackEXT != nullptr);
@@ -169,7 +131,6 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         debug_report_ci.pUserData   = nullptr;
         err = f_vkCreateDebugReportCallbackEXT(g_Instance, &debug_report_ci, g_Allocator, &g_DebugReport);
         check_vk_result(err);
-#endif
     }
 
     // Select Physical Device (GPU)
@@ -191,10 +152,6 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, nullptr);
         properties.resize(properties_count);
         vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, properties.Data);
-#ifdef VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
-        if (IsExtensionAvailable(properties, VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME))
-            device_extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-#endif
 
         const float             queue_priority[] = {1.0f};
         VkDeviceQueueCreateInfo queue_info[1]    = {};
@@ -262,14 +219,8 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface
     );
 
     // Select Present Mode
-#ifdef APP_USE_UNLIMITED_FRAME_RATE
-    VkPresentModeKHR present_modes[] = {
-        VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR
-    };
-#else
     VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_FIFO_KHR};
-#endif
-    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(
+    wd->PresentMode                  = ImGui_ImplVulkanH_SelectPresentMode(
         g_PhysicalDevice, wd->Surface, &present_modes[0], IM_COUNTOF(present_modes)
     );
     // printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
@@ -285,12 +236,10 @@ static void CleanupVulkan()
 {
     vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
 
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
     // Remove the debug report callback
     auto f_vkDestroyDebugReportCallbackEXT =
         (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkDestroyDebugReportCallbackEXT");
     f_vkDestroyDebugReportCallbackEXT(g_Instance, g_DebugReport, g_Allocator);
-#endif // APP_USE_VULKAN_DEBUG_REPORT
 
     vkDestroyDevice(g_Device, g_Allocator);
     vkDestroyInstance(g_Instance, g_Allocator);
@@ -504,9 +453,7 @@ int func()
     // IM_ASSERT(font != nullptr);
 
     // Our state
-    bool   show_demo_window    = true;
-    bool   show_another_window = false;
-    ImVec4 clear_color         = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -555,54 +502,9 @@ int func()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // 1. Show the big demo window (Most of the sample code is in
-        // ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear
-        // ImGui!).
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
-
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair
-        // to create a named window.
         {
-            static float f       = 0.0f;
-            static int   counter = 0;
-
-            ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!"
-                                           // and append into it.
-
-            ImGui::Text("This is some useful text."); // Display some text (you can
-                                                      // use a format strings too)
-            ImGui::Checkbox("Demo Window",
-                            &show_demo_window); // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f,
-                               1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color",
-                              (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button")) // Buttons return true when clicked (most
-                                         // widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
-        }
-
-        // 3. Show another simple window.
-        if (show_another_window)
-        {
-            ImGui::Begin(
-                "Another Window",
-                &show_another_window
-            ); // Pass a pointer to our bool variable (the
-               // window will have a closing button that will
-               // clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
+            ImGui::Begin("Hello, world!");
+            ImGui::Text("This is some useful text.");
             ImGui::End();
         }
 

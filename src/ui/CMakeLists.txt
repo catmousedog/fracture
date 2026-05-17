@@ -10,11 +10,13 @@ add_library(${TARGET}
 )
 
 target_link_libraries(${TARGET} PRIVATE
+    util
     vulkan
     glfw
 )
 
 target_include_directories(${TARGET} PRIVATE
     ${imgui_SOURCE_DIR}
+    ../util
     ../vulkan
 )

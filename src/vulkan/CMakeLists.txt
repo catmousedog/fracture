@@ -6,12 +6,17 @@ file(GLOB_RECURSE SOURCES "*.cpp")
 
 add_library(${TARGET} 
 	${SOURCES}
+	${IMGUI_SOURCES}
 )
 
 target_link_libraries(${TARGET} PRIVATE
     Vulkan::Vulkan
+    util
+	glfw
 )
 
 target_include_directories(${TARGET} PRIVATE
     ${Vulkan_INCLUDE_DIRS}
+	${imgui_SOURCE_DIR}
+    ../util
 )
