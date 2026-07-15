@@ -6,11 +6,9 @@ add_executable(${TARGET}
 
 target_link_libraries(${TARGET} 
 	vulkan
-	ui
 	core
 )
 target_include_directories(${TARGET} PRIVATE 
 	../vulkan
-	../ui
 	../core
 )

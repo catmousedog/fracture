@@ -1,7 +1,14 @@
 #pragma once
 
+#define GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_VULKAN
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
+#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
+
+#include <cstdint>
 #include <vector>
-#include <vulkan/vulkan.h>
 
 class GLFWwindow;
 
@@ -10,13 +17,8 @@ class VulkanContext
   public:
     VulkanContext(GLFWwindow* window, uint32_t width, uint32_t height);
 
-    ~VulkanContext();
-
     void drawFrame();
-    void waitIdle()
-    {
-        vkDeviceWaitIdle(_device);
-    }
+    void waitIdle();
 
   private:
     void createInstance();
@@ -25,49 +27,39 @@ class VulkanContext
     void pickPhysicalDevice();
     void createLogicalDevice();
     void createSwapchain(uint32_t width, uint32_t height);
-    void createRenderPass();
-    void createPipeline();
-    void createFramebuffers();
-    void createCommandPool();
+    void createCommandpool();
     void createCommandBuffers();
-    void createSyncObjects();
+    void recordCommandBuffers();
+    void createPipeline();
 
-    VkShaderModule createShaderModule(const char* path);
+    PFN_vkVoidFunction getFunctionEXT(const char* funcName);
 
     // Core
-    VkInstance       _instance       = VK_NULL_HANDLE;
-    VkSurfaceKHR     _surface        = VK_NULL_HANDLE;
-    VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
-    VkDevice         _device         = VK_NULL_HANDLE;
+    vk::raii::Context        _context;
+    vk::raii::Instance       _instance       = nullptr;
+    vk::raii::SurfaceKHR     _surface        = nullptr;
+    vk::raii::PhysicalDevice _physicalDevice = nullptr;
+    vk::raii::Device         _device         = nullptr;
 
     // Debug
-    VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
+    vk::raii::DebugUtilsMessengerEXT _debugMessenger = nullptr;
 
     // Queues
-    uint32_t _family = 0;
-    VkQueue  queue   = VK_NULL_HANDLE;
+    uint32_t        _family = 0;
+    vk::raii::Queue _queue  = nullptr;
 
     // Swapchain
-    VkSwapchainKHR           _swapchain       = VK_NULL_HANDLE;
-    VkFormat                 _swapchainFormat = {};
-    VkExtent2D               _swapchainExtent = {};
-    std::vector<VkImage>     _swapImages;
-    std::vector<VkImageView> _swapImageViews;
-
-    // Render pass & pipeline
-    VkRenderPass     _renderPass     = VK_NULL_HANDLE;
-    VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline       _pipeline       = VK_NULL_HANDLE;
+    vk::raii::SwapchainKHR           _swapchain      = nullptr;
+    uint32_t                         _imageCount     = 0;
+    std::vector<vk::Image>           _swapImages     = {};
+    std::vector<vk::raii::ImageView> _swapImageViews = {};
 
     // Framebuffers & commands
-    std::vector<VkFramebuffer>   _framebuffers;
-    VkCommandPool                _commandPool = VK_NULL_HANDLE;
-    std::vector<VkCommandBuffer> _commandBuffers;
+    vk::raii::CommandPool                _commandPool    = nullptr;
+    std::vector<vk::raii::CommandBuffer> _commandBuffers = {};
 
-    // Sync (double-buffered)
-    static constexpr int     MAX_FRAMES_IN_FLIGHT = 2;
-    int                      _currentFrame        = 0;
-    std::vector<VkSemaphore> _imageAvailable;
-    std::vector<VkSemaphore> _renderFinished;
-    std::vector<VkFence>     _inFlightFences;
+    // pipeline
+    vk::raii::ShaderModule   _shader         = nullptr;
+    vk::raii::PipelineLayout _pipelineLayout = nullptr;
+    vk::raii::Pipeline       _pipeline       = nullptr;
 };

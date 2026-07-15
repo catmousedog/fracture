@@ -7,8 +7,8 @@ add_library(${TARGET} STATIC
 )
 
 target_link_libraries(${TARGET} 
-    vulkan ui
+    vulkan
 )
 target_include_directories(${TARGET} PRIVATE 
-    ../vulkan ../ui
+    ../vulkan
 )

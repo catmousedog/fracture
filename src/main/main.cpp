@@ -9,15 +9,15 @@ int main()
 
     GLFWwindow* window = glfwCreateWindow(1280, 720, "fracture", nullptr, nullptr);
 
-    VulkanContext ctx(window, 1280, 720);
+    VulkanContext vulkan(window, 1280, 720);
 
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
-        ctx.drawFrame();
+        vulkan.drawFrame();
     }
 
-    ctx.waitIdle();
+    vulkan.waitIdle();
     glfwDestroyWindow(window);
     glfwTerminate();
 }
