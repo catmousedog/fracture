@@ -1,5 +1,6 @@
 #include "VulkanContext.hpp"
 
+#include <string>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_to_string.hpp>
@@ -12,11 +13,16 @@
 
 #include "Basics.hpp"
 #include "Log.hpp"
+#include "vulkan/vulkan.hpp"
+
+////////////////////////////////////////////////////////////
 
 namespace
 {
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+////////////////////////////////////////////////////////////
+
+VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
     vk::DebugUtilsMessageTypeFlagsEXT             messageTypes,
     const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -29,33 +35,33 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     switch (messageSeverity)
     {
     case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
-        Log::info("Validation layer VERB  {}: {}", objectType, msg);
+        Log::info("{} Vulkan VRB: {}", objectType, msg);
         break;
     case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:
-        Log::info("Validation layer INFO  {}: {}", objectType, msg);
+        Log::info("{} Vulkan INF: {}", objectType, msg);
         break;
     case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning:
-        Log::warn("Validation layer WARN  {}: {}", objectType, msg);
+        Log::warn("{} Vulkan WRN: {}", objectType, msg);
         break;
     case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:
-        Log::error("Validation layer ERROR {}: {}", objectType, msg);
+        Log::error("{} Vulkan ERR: {}", objectType, msg);
         break;
     default:
-        Log::error("Validation layer DEFLT {}: {}", objectType, msg);
+        Log::error("{} Vulkan DFL: {}", objectType, msg);
         break;
     }
 
-    return VK_FALSE;
+    return vk::False;
 }
+////////////////////////////////////////////////////////////
 
 vector<char> readFile(const string& filename)
 {
+    // seek end of file
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
     if (!file.is_open())
-    {
-        throw std::runtime_error("failed to open file!");
-    }
+        FATAL("failed to open file {}!", filename);
 
     vector<char> buffer(file.tellg());
 
@@ -67,26 +73,84 @@ vector<char> readFile(const string& filename)
     return buffer;
 }
 
+////////////////////////////////////////////////////////////
+
 } // namespace
 
+////////////////////////////////////////////////////////////
+
 VulkanContext::VulkanContext(GLFWwindow* window, uint32_t width, uint32_t height)
+    : _swapChainExtent({width, height})
 {
     createInstance();
     createDebugCallback();
     createSurface(window);
     pickPhysicalDevice();
     createLogicalDevice();
-    createSwapchain(width, height);
-    createCommandpool();
-    createCommandBuffers();
+    createSwapchain();
+    createPipeline();
+    createCommandPool();
+    createCommandBuffer();
+    createSyncObjects();
 }
 
-void VulkanContext::drawFrame() { }
+////////////////////////////////////////////////////////////
+
+void VulkanContext::drawFrame()
+{
+    auto fenceResult = _device.waitForFences(*_drawFence, vk::True, UINT64_MAX);
+    if (fenceResult != vk::Result::eSuccess)
+        FATAL("failed to wait for fence!");
+    _device.resetFences(*_drawFence);
+
+    auto [result, imageIndex] = _swapchain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphore, nullptr);
+
+    recordCommandBuffer(imageIndex);
+
+    _queue.waitIdle(); // NOTE: for simplicity, wait for the queue to be idle before starting the frame
+                       // In the next chapter you see how to use multiple frames in flight and fences to sync
+
+    vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    const vk::SubmitInfo   submitInfo{
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = &*_presentCompleteSemaphore,
+        .pWaitDstStageMask    = &waitDestinationStageMask,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &*_commandBuffer,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = &*_renderFinishedSemaphore
+    };
+    _queue.submit(submitInfo, *_drawFence);
+
+    const vk::PresentInfoKHR presentInfoKHR{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &*_renderFinishedSemaphore,
+        .swapchainCount     = 1,
+        .pSwapchains        = &*_swapchain,
+        .pImageIndices      = &imageIndex
+    };
+    result = _queue.presentKHR(presentInfoKHR);
+    switch (result)
+    {
+    case vk::Result::eSuccess:
+        break;
+    case vk::Result::eSuboptimalKHR:
+        Log::warn("vk::Queue::presentKHR returned vk::Result::eSuboptimalKHR !");
+        break;
+    default:
+        Log::warn("vk::Queue::presentKHR returned unexpected result!");
+        break;
+    }
+}
+
+////////////////////////////////////////////////////////////
 
 void VulkanContext::waitIdle()
 {
-    _device.waitIdle();
+    _queue.waitIdle();
 }
+
+////////////////////////////////////////////////////////////
 
 void VulkanContext::createInstance()
 {
@@ -119,9 +183,7 @@ void VulkanContext::createInstance()
         }
     );
     if (unsupportedPropertyIt != extensions.end())
-    {
-        throw std::runtime_error("Required extension not supported: " + std::string(*unsupportedPropertyIt));
-    }
+        FATAL("Required extension not supported: {}", *unsupportedPropertyIt);
 
     // ======================= LAYERS ======================= //
 
@@ -142,12 +204,10 @@ void VulkanContext::createInstance()
         }
     );
     if (unsupportedLayerIt != layers.end())
-    {
-        throw std::runtime_error("Required layer not supported: " + std::string(*unsupportedLayerIt));
-    }
+        FATAL("Required layer not supported: {}", *unsupportedLayerIt);
 
     // create instance
-    vk::InstanceCreateInfo info{
+    vk::InstanceCreateInfo instanceInfo{
         .pApplicationInfo        = &appInfo,
         .enabledLayerCount       = layerCount,
         .ppEnabledLayerNames     = layers.data(),
@@ -155,13 +215,15 @@ void VulkanContext::createInstance()
         .ppEnabledExtensionNames = extensions.data(),
     };
 
-    _instance = vk::raii::Instance(_context, info);
+    _instance = vk::raii::Instance(_context, instanceInfo);
 }
+
+////////////////////////////////////////////////////////////
 
 void VulkanContext::createDebugCallback()
 {
     // create debug callback for any severity and type
-    vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{
+    vk::DebugUtilsMessengerCreateInfoEXT debugMessengerInfo{
         .messageSeverity =
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
@@ -171,13 +233,13 @@ void VulkanContext::createDebugCallback()
         .pfnUserCallback = &debugCallback,
     };
 
-    _debugMessenger = _instance.createDebugUtilsMessengerEXT(debugMessengerCreateInfo);
+    _debugMessenger = _instance.createDebugUtilsMessengerEXT(debugMessengerInfo);
 }
+
+////////////////////////////////////////////////////////////
 
 void VulkanContext::createSurface(GLFWwindow* window)
 {
-    // create Vulkan surface for GLFW window
-
     // GLFW cannot use raii
     VkSurfaceKHR surface;
     VkResult     res = glfwCreateWindowSurface(*_instance, window, nullptr, &surface);
@@ -187,6 +249,8 @@ void VulkanContext::createSurface(GLFWwindow* window)
     // convert to raii
     _surface = vk::raii::SurfaceKHR(_instance, surface);
 }
+
+////////////////////////////////////////////////////////////
 
 void VulkanContext::pickPhysicalDevice()
 {
@@ -200,63 +264,67 @@ void VulkanContext::pickPhysicalDevice()
     _physicalDevice = devices[0];
 }
 
+////////////////////////////////////////////////////////////
+
 void VulkanContext::createLogicalDevice()
 {
     // --- Obtain queue family properties --- //
     vector<vk::QueueFamilyProperties> queueFamilies = _physicalDevice.getQueueFamilyProperties();
 
     // --- Find queue family with graphics and present support --- //
-    _family = UINT32_MAX;
+    _familyIndex = UINT32_MAX;
     for (uint32_t i = 0; i < queueFamilies.size(); i++)
     {
-        VkBool32 presentSupport = _physicalDevice.getSurfaceSupportKHR(i, _surface);
+        vk::Bool32 presentSupport = _physicalDevice.getSurfaceSupportKHR(i, _surface);
         if ((queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) && presentSupport)
         {
-            _family = i;
+            _familyIndex = i;
             break;
         }
     }
-    if (_family == UINT32_MAX)
+    if (_familyIndex == UINT32_MAX)
         FATAL("No graphics+present queue family found");
 
     // --- Create single queue --- //
     float                     priority = 1.0f;
-    vk::DeviceQueueCreateInfo queueInfo{.queueFamilyIndex = _family, .queueCount = 1, .pQueuePriorities = &priority};
+    vk::DeviceQueueCreateInfo queueInfo{
+        .queueFamilyIndex = _familyIndex, .queueCount = 1, .pQueuePriorities = &priority
+    };
 
     const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
     // --- Create logical device --- //
-    vk::DeviceCreateInfo info{
+    vk::DeviceCreateInfo deviceInfo{
         .queueCreateInfoCount    = 1,
         .pQueueCreateInfos       = &queueInfo,
         .enabledExtensionCount   = 1,
         .ppEnabledExtensionNames = deviceExtensions
     };
+    vk::PhysicalDeviceVulkan11Features deviceFeatures11{.shaderDrawParameters = true};
+    vk::PhysicalDeviceVulkan13Features deviceFeatures13{.synchronization2 = true, .dynamicRendering = true};
+    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan13Features>
+        chain{deviceInfo, deviceFeatures11, deviceFeatures13};
 
-    _device = _physicalDevice.createDevice(info, nullptr);
+    _device = _physicalDevice.createDevice(chain.get<vk::DeviceCreateInfo>());
 
     // --- Obtain queue --- //
-    _queue = _device.getQueue(_family, 0);
+    _queue = _device.getQueue(_familyIndex, 0);
 }
 
-void VulkanContext::createSwapchain(uint32_t width, uint32_t height)
+////////////////////////////////////////////////////////////
+
+void VulkanContext::createSwapchain()
 {
     // --- Obtain surface formats --- //
-    vector<vk::SurfaceFormatKHR> formats = _physicalDevice.getSurfaceFormatsKHR();
+    vector<vk::SurfaceFormatKHR> formats = _physicalDevice.getSurfaceFormatsKHR(_surface);
 
     if (formats.empty())
         FATAL("No surface formats available");
 
     // --- Pick format (prefer B8G8R8A8_SRGB / SRGB_NONLINEAR) --- //
-    vk::SurfaceFormatKHR format = formats[0]; // default
-    for (auto& f : formats)
-    {
-        if (f.format == vk::Format::eB8G8R8A8Srgb && f.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
-        {
-            format = f;
-            break;
-        }
-    }
+    constexpr vk::SurfaceFormatKHR desiredFormat{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear};
+    const auto                     itFormat = std::ranges::find(formats, desiredFormat);
+    _surfaceFormat                          = itFormat != formats.end() ? *itFormat : formats[0];
 
     // --- Obtain surface capabilities --- //
     vk::SurfaceCapabilitiesKHR caps = _physicalDevice.getSurfaceCapabilitiesKHR(_surface);
@@ -264,26 +332,25 @@ void VulkanContext::createSwapchain(uint32_t width, uint32_t height)
     if (_imageCount == 0)
         FATAL("Vulkan surface does not support any images");
 
-    vk::Extent2D swapchainExtent = {width, height};
-
     // --- Create swapchain --- //
-    vk::SwapchainCreateInfoKHR info{};
-    info.surface               = *_surface;
-    info.minImageCount         = _imageCount;
-    info.imageFormat           = format.format;
-    info.imageColorSpace       = format.colorSpace;
-    info.imageExtent           = swapchainExtent;
-    info.imageArrayLayers      = 1;
-    info.imageUsage            = vk::ImageUsageFlagBits::eColorAttachment;
-    info.imageSharingMode      = vk::SharingMode::eExclusive; // single queue family
-    info.queueFamilyIndexCount = 1;
-    info.pQueueFamilyIndices   = &_family;
-    info.preTransform          = caps.currentTransform;
-    info.compositeAlpha        = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-    info.presentMode           = vk::PresentModeKHR::eFifo; // vsync, always supported
-    info.clipped               = VK_TRUE;
+    vk::SwapchainCreateInfoKHR swapChainInfo{
+        .surface               = *_surface,
+        .minImageCount         = _imageCount,
+        .imageFormat           = _surfaceFormat.format,
+        .imageColorSpace       = _surfaceFormat.colorSpace,
+        .imageExtent           = _swapChainExtent,
+        .imageArrayLayers      = 1,
+        .imageUsage            = vk::ImageUsageFlagBits::eColorAttachment,
+        .imageSharingMode      = vk::SharingMode::eExclusive, // single queue family
+        .queueFamilyIndexCount = 1,
+        .pQueueFamilyIndices   = &_familyIndex,
+        .preTransform          = caps.currentTransform,
+        .compositeAlpha        = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+        .presentMode           = vk::PresentModeKHR::eFifo, // vsync, always supported
+        .clipped               = vk::True
+    };
 
-    _swapchain = _device.createSwapchainKHR(info, nullptr);
+    _swapchain = _device.createSwapchainKHR(swapChainInfo);
 
     // --- Obtain images --- //
     _swapImages = _swapchain.getImages();
@@ -292,85 +359,227 @@ void VulkanContext::createSwapchain(uint32_t width, uint32_t height)
     _swapImageViews.reserve(_swapImages.size());
     for (const auto& image : _swapImages)
     {
-        vk::ImageViewCreateInfo ivInfo{};
-        ivInfo.sType                           = vk::StructureType::eImageViewCreateInfo;
-        ivInfo.image                           = image;
-        ivInfo.viewType                        = vk::ImageViewType::e2D;
-        ivInfo.format                          = format.format;
-        ivInfo.subresourceRange.aspectMask     = vk::ImageAspectFlagBits::eColor;
-        ivInfo.subresourceRange.baseMipLevel   = 0;
-        ivInfo.subresourceRange.levelCount     = 1;
-        ivInfo.subresourceRange.baseArrayLayer = 0;
-        ivInfo.subresourceRange.layerCount     = 1;
+        vk::ImageViewCreateInfo imageViewInfo{
+            .sType            = vk::StructureType::eImageViewCreateInfo,
+            .image            = image,
+            .viewType         = vk::ImageViewType::e2D,
+            .format           = _surfaceFormat.format,
+            .subresourceRange = {
+                .aspectMask     = vk::ImageAspectFlagBits::eColor,
+                .baseMipLevel   = 0,
+                .levelCount     = 1,
+                .baseArrayLayer = 0,
+                .layerCount     = 1,
+            }
+        };
 
-        _swapImageViews.emplace_back(_device, ivInfo);
+        _swapImageViews.emplace_back(_device, imageViewInfo);
     }
 }
 
-void VulkanContext::createCommandpool()
-{
-    // --- Create command buffer pool --- //
-    vk::CommandPoolCreateInfo info{};
-    info.queueFamilyIndex = _family;
-    info.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-
-    _commandPool = _device.createCommandPool(info, nullptr);
-}
-
-void VulkanContext::createCommandBuffers()
-{
-    _commandBuffers.clear();
-    vk::CommandBufferAllocateInfo info{
-        .commandPool = _commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = _imageCount
-    };
-    _commandBuffers = vk::raii::CommandBuffers(_device, info);
-}
-
-void VulkanContext::recordCommandBuffers()
-{
-    // TODO
-}
+////////////////////////////////////////////////////////////
 
 void VulkanContext::createPipeline()
 {
-    const vector<char> code = readFile("shaders/slang.spv");
+    const vector<char> code = readFile("../shaders/slang.spv");
 
-    // VkShaderModuleCreateInfo createInfo{};
-    // createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-
-    vk::ShaderModuleCreateInfo info{
+    vk::ShaderModuleCreateInfo shaderModuleInfo{
         .codeSize = code.size() * sizeof(char), .pCode = reinterpret_cast<const uint32_t*>(code.data())
     };
-
-    _shader = _device.createShaderModule(info, nullptr);
+    _shader = _device.createShaderModule(shaderModuleInfo);
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eVertex, .module = _shader, .pName = "vertMain"
     };
-
     vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eFragment, .module = _shader, .pName = "fragMain"
     };
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+    vk::PipelineShaderStageCreateInfo shaderStagesInfo[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-    VkPipelineVertexInputStateCreateInfo   vertexInputInfo;
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly{.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST};
-    VkPipelineViewportStateCreateInfo      viewportState{.viewportCount = 1, .scissorCount = 1};
+    vk::PipelineVertexInputStateCreateInfo   vertexInputInfo;
+    vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo{.topology = vk::PrimitiveTopology::eTriangleList};
+    vk::PipelineViewportStateCreateInfo      viewportInfo{.viewportCount = 1, .scissorCount = 1};
 
-    VkPipelineRasterizationStateCreateInfo rasterizer{
-        .depthClampEnable        = false,
-        .rasterizerDiscardEnable = false,
-        .polygonMode             = VK_POLYGON_MODE_FILL,
-        .cullMode                = VK_CULL_MODE_BACK_BIT,
-        .frontFace               = VK_FRONT_FACE_CLOCKWISE,
-        .depthBiasEnable         = false,
+    vk::PipelineRasterizationStateCreateInfo rasterizationInfo{
+        .depthClampEnable        = vk::False,
+        .rasterizerDiscardEnable = vk::False,
+        .polygonMode             = vk::PolygonMode::eFill,
+        .cullMode                = vk::CullModeFlagBits::eBack,
+        .frontFace               = vk::FrontFace::eClockwise,
+        .depthBiasEnable         = vk::False,
         .lineWidth               = 1.0f
     };
 
-    VkPipelineMultisampleStateCreateInfo multisampling{
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT, .sampleShadingEnable = vk::False
+    vk::PipelineMultisampleStateCreateInfo multisampleInfo{
+        .rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False
     };
+
+    vk::PipelineColorBlendAttachmentState colorBlendAttachmentInfo{
+        .blendEnable    = vk::False,
+        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                          vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
+    };
+
+    vk::PipelineColorBlendStateCreateInfo colorBlendInfo{
+        .logicOpEnable   = vk::False,
+        .logicOp         = vk::LogicOp::eCopy,
+        .attachmentCount = 1,
+        .pAttachments    = &colorBlendAttachmentInfo
+    };
+
+    std::vector<vk::DynamicState>      dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
+        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()
+    };
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0, .pushConstantRangeCount = 0};
+    _pipelineLayout = vk::raii::PipelineLayout(_device, pipelineLayoutInfo);
+
+    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
+        {.stageCount          = 2,
+         .pStages             = shaderStagesInfo,
+         .pVertexInputState   = &vertexInputInfo,
+         .pInputAssemblyState = &inputAssemblyInfo,
+         .pViewportState      = &viewportInfo,
+         .pRasterizationState = &rasterizationInfo,
+         .pMultisampleState   = &multisampleInfo,
+         .pColorBlendState    = &colorBlendInfo,
+         .pDynamicState       = &dynamicStateInfo,
+         .layout              = _pipelineLayout,
+         .renderPass          = nullptr},
+        {.colorAttachmentCount = 1, .pColorAttachmentFormats = &_surfaceFormat.format}
+    };
+
+    _pipeline = vk::raii::Pipeline(_device, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
 }
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::createCommandPool()
+{
+    vk::CommandPoolCreateInfo poolInfo{
+        .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, .queueFamilyIndex = _familyIndex
+    };
+    _commandPool = _device.createCommandPool(poolInfo);
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::createCommandBuffer()
+{
+    vk::CommandBufferAllocateInfo allocInfo{
+        .commandPool = _commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = 1
+    };
+    _commandBuffer = std::move(_device.allocateCommandBuffers(allocInfo).front());
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
+{
+    _commandBuffer.begin({});
+
+    // Before starting rendering, transition the swapchain image to vk::ImageLayout::eColorAttachmentOptimal
+    transition_image_layout(
+        imageIndex,
+        vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eColorAttachmentOptimal,
+        {},                                                 // srcAccessMask (no need to wait for previous operations)
+        vk::AccessFlagBits2::eColorAttachmentWrite,         // dstAccessMask
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput  // dstStage
+    );
+    vk::ClearValue              clearColor     = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+    vk::RenderingAttachmentInfo attachmentInfo = {
+        .imageView   = _swapImageViews[imageIndex],
+        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .loadOp      = vk::AttachmentLoadOp::eClear,
+        .storeOp     = vk::AttachmentStoreOp::eStore,
+        .clearValue  = clearColor
+    };
+    vk::RenderingInfo renderingInfo = {
+        .renderArea           = {.offset = {0, 0}, .extent = _swapChainExtent},
+        .layerCount           = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments    = &attachmentInfo
+    };
+
+    _commandBuffer.beginRendering(renderingInfo);
+    _commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
+    _commandBuffer.setViewport(
+        0,
+        vk::Viewport(
+            0.0f,
+            0.0f,
+            static_cast<float>(_swapChainExtent.width),
+            static_cast<float>(_swapChainExtent.height),
+            0.0f,
+            1.0f
+        )
+    );
+    _commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swapChainExtent));
+    _commandBuffer.draw(3, 1, 0, 0);
+    _commandBuffer.endRendering();
+
+    // After rendering, transition the swapchain image to vk::ImageLayout::ePresentSrcKHR
+    transition_image_layout(
+        imageIndex,
+        vk::ImageLayout::eColorAttachmentOptimal,
+        vk::ImageLayout::ePresentSrcKHR,
+        vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask
+        {},                                                 // dstAccessMask
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
+        vk::PipelineStageFlagBits2::eBottomOfPipe           // dstStage
+    );
+    _commandBuffer.end();
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::createSyncObjects()
+{
+    _presentCompleteSemaphore = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
+    _renderFinishedSemaphore  = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
+    _drawFence                = vk::raii::Fence(_device, {.flags = vk::FenceCreateFlagBits::eSignaled});
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::transition_image_layout(
+    uint32_t                imageIndex,
+    vk::ImageLayout         old_layout,
+    vk::ImageLayout         new_layout,
+    vk::AccessFlags2        src_access_mask,
+    vk::AccessFlags2        dst_access_mask,
+    vk::PipelineStageFlags2 src_stage_mask,
+    vk::PipelineStageFlags2 dst_stage_mask
+)
+{
+    vk::ImageMemoryBarrier2 barrier = {
+        .srcStageMask        = src_stage_mask,
+        .srcAccessMask       = src_access_mask,
+        .dstStageMask        = dst_stage_mask,
+        .dstAccessMask       = dst_access_mask,
+        .oldLayout           = old_layout,
+        .newLayout           = new_layout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image               = _swapImages[imageIndex],
+        .subresourceRange    = {
+            .aspectMask     = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1
+        }
+    };
+    vk::DependencyInfo dependency_info = {
+        .dependencyFlags = {}, .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier
+    };
+    _commandBuffer.pipelineBarrier2(dependency_info);
+}
+
+////////////////////////////////////////////////////////////
 
 PFN_vkVoidFunction VulkanContext::getFunctionEXT(const char* funcName)
 {
@@ -379,3 +588,5 @@ PFN_vkVoidFunction VulkanContext::getFunctionEXT(const char* funcName)
         FATAL("FunctionEXT {} not found", funcName);
     return func;
 }
+
+////////////////////////////////////////////////////////////

@@ -26,12 +26,22 @@ class VulkanContext
     void createSurface(GLFWwindow* window);
     void pickPhysicalDevice();
     void createLogicalDevice();
-    void createSwapchain(uint32_t width, uint32_t height);
-    void createCommandpool();
-    void createCommandBuffers();
-    void recordCommandBuffers();
+    void createSwapchain();
     void createPipeline();
+    void createCommandPool();
+    void createCommandBuffer();
+    void recordCommandBuffer(uint32_t imageIndex);
+    void createSyncObjects();
 
+    void transition_image_layout(
+        uint32_t                imageIndex,
+        vk::ImageLayout         old_layout,
+        vk::ImageLayout         new_layout,
+        vk::AccessFlags2        src_access_mask,
+        vk::AccessFlags2        dst_access_mask,
+        vk::PipelineStageFlags2 src_stage_mask,
+        vk::PipelineStageFlags2 dst_stage_mask
+    );
     PFN_vkVoidFunction getFunctionEXT(const char* funcName);
 
     // Core
@@ -45,21 +55,28 @@ class VulkanContext
     vk::raii::DebugUtilsMessengerEXT _debugMessenger = nullptr;
 
     // Queues
-    uint32_t        _family = 0;
-    vk::raii::Queue _queue  = nullptr;
+    uint32_t        _familyIndex = 0;
+    vk::raii::Queue _queue       = nullptr;
 
     // Swapchain
-    vk::raii::SwapchainKHR           _swapchain      = nullptr;
-    uint32_t                         _imageCount     = 0;
-    std::vector<vk::Image>           _swapImages     = {};
-    std::vector<vk::raii::ImageView> _swapImageViews = {};
+    vk::raii::SwapchainKHR           _swapchain       = nullptr;
+    vk::Extent2D                     _swapChainExtent = {};
+    vk::SurfaceFormatKHR             _surfaceFormat   = {};
+    uint32_t                         _imageCount      = 0;
+    std::vector<vk::Image>           _swapImages      = {};
+    std::vector<vk::raii::ImageView> _swapImageViews  = {};
 
     // Framebuffers & commands
-    vk::raii::CommandPool                _commandPool    = nullptr;
-    std::vector<vk::raii::CommandBuffer> _commandBuffers = {};
+    vk::raii::CommandPool   _commandPool   = nullptr;
+    vk::raii::CommandBuffer _commandBuffer = nullptr;
 
     // pipeline
     vk::raii::ShaderModule   _shader         = nullptr;
     vk::raii::PipelineLayout _pipelineLayout = nullptr;
     vk::raii::Pipeline       _pipeline       = nullptr;
+
+    // Sync objects
+    vk::raii::Semaphore _presentCompleteSemaphore = nullptr;
+    vk::raii::Semaphore _renderFinishedSemaphore  = nullptr;
+    vk::raii::Fence     _drawFence                = nullptr;
 };

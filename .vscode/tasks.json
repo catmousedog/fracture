@@ -52,14 +52,10 @@
 		{
 			"label": "build",
 			"type": "shell",
-			"command": "ninja",
+			"command": "ninja -j 8 && echo ======== BUILD SUCCESSFUL ========",
 			"options": {
 				"cwd": "${workspaceFolder}/build/release/"
 			},
-			"args": [
-				"-j",
-				"8",
-			],
 			"presentation": {
 				"echo": false,
 				"reveal": "silent",
@@ -75,14 +71,10 @@
 		{
 			"label": "build (debug)",
 			"type": "shell",
-			"command": "ninja",
+			"command": "ninja -j 8 && echo ======== BUILD SUCCESSFUL ========",
 			"options": {
 				"cwd": "${workspaceFolder}/build/debug/"
 			},
-			"args": [
-				"-j",
-				"8",
-			],
 			"presentation": {
 				"echo": false,
 				"reveal": "silent",

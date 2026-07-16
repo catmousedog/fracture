@@ -18,6 +18,7 @@ int main()
     }
 
     vulkan.waitIdle();
+
     glfwDestroyWindow(window);
     glfwTerminate();
 }
