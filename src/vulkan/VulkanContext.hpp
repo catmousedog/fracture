@@ -3,6 +3,7 @@
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
@@ -12,18 +13,25 @@
 
 class GLFWwindow;
 
+struct VulkanContextInfo
+{
+    uint32_t framesInFlight = 2;
+};
+
 class VulkanContext
 {
   public:
-    VulkanContext(GLFWwindow* window, uint32_t width, uint32_t height);
+    VulkanContext(GLFWwindow* window, const VulkanContextInfo& info);
 
     void drawFrame();
     void waitIdle();
+    void recreateSwapchain();
+    void resizeFramebuffer(uint32_t width, uint32_t height);
 
   private:
     void createInstance();
     void createDebugCallback();
-    void createSurface(GLFWwindow* window);
+    void createSurface();
     void pickPhysicalDevice();
     void createLogicalDevice();
     void createSwapchain();
@@ -44,6 +52,9 @@ class VulkanContext
     );
     PFN_vkVoidFunction getFunctionEXT(const char* funcName);
 
+    // Window
+    GLFWwindow* _window = nullptr;
+
     // Core
     vk::raii::Context        _context;
     vk::raii::Instance       _instance       = nullptr;
@@ -62,13 +73,15 @@ class VulkanContext
     vk::raii::SwapchainKHR           _swapchain       = nullptr;
     vk::Extent2D                     _swapChainExtent = {};
     vk::SurfaceFormatKHR             _surfaceFormat   = {};
-    uint32_t                         _imageCount      = 0;
     std::vector<vk::Image>           _swapImages      = {};
     std::vector<vk::raii::ImageView> _swapImageViews  = {};
 
     // Framebuffers & commands
-    vk::raii::CommandPool   _commandPool   = nullptr;
-    vk::raii::CommandBuffer _commandBuffer = nullptr;
+    uint32_t                             _framesInFlight     = 0;
+    uint32_t                             _frameIndex         = 0;
+    vk::raii::CommandPool                _commandPool        = nullptr;
+    std::vector<vk::raii::CommandBuffer> _commandBuffers     = {};
+    bool                                 _frameBufferResized = false;
 
     // pipeline
     vk::raii::ShaderModule   _shader         = nullptr;
@@ -76,7 +89,7 @@ class VulkanContext
     vk::raii::Pipeline       _pipeline       = nullptr;
 
     // Sync objects
-    vk::raii::Semaphore _presentCompleteSemaphore = nullptr;
-    vk::raii::Semaphore _renderFinishedSemaphore  = nullptr;
-    vk::raii::Fence     _drawFence                = nullptr;
+    std::vector<vk::raii::Fence>     _drawFences                = {};
+    std::vector<vk::raii::Semaphore> _renderFinishedSemaphores  = {};
+    std::vector<vk::raii::Semaphore> _presentCompleteSemaphores = {};
 };

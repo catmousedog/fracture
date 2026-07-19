@@ -79,12 +79,13 @@ vector<char> readFile(const string& filename)
 
 ////////////////////////////////////////////////////////////
 
-VulkanContext::VulkanContext(GLFWwindow* window, uint32_t width, uint32_t height)
-    : _swapChainExtent({width, height})
+VulkanContext::VulkanContext(GLFWwindow* window, const VulkanContextInfo& info)
+    : _window(window),
+      _framesInFlight(info.framesInFlight)
 {
     createInstance();
     createDebugCallback();
-    createSurface(window);
+    createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapchain();
@@ -98,49 +99,78 @@ VulkanContext::VulkanContext(GLFWwindow* window, uint32_t width, uint32_t height
 
 void VulkanContext::drawFrame()
 {
-    auto fenceResult = _device.waitForFences(*_drawFence, vk::True, UINT64_MAX);
+    // if (_frameBufferResized)
+    // {
+    //     _frameBufferResized = false;
+    //     recreateSwapchain();
+    // }
+
+    // each frame-in-flight worker has its own command buffer, fence and present semaphore
+    auto& commandBuffer            = _commandBuffers[_frameIndex];
+    auto& drawFence                = _drawFences[_frameIndex];
+    auto& presentCompleteSemaphore = _presentCompleteSemaphores[_frameIndex];
+
+    auto fenceResult = _device.waitForFences(*drawFence, vk::True, UINT64_MAX);
     if (fenceResult != vk::Result::eSuccess)
-        FATAL("failed to wait for fence!");
-    _device.resetFences(*_drawFence);
+        Log::warn("vk::Device::waitForFences returned {} !", vk::to_string(fenceResult));
 
-    auto [result, imageIndex] = _swapchain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphore, nullptr);
+    auto [acquireResult, imageIndex] = _swapchain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr);
 
+    if (acquireResult == vk::Result::eErrorOutOfDateKHR)
+    {
+        recreateSwapchain();
+        return;
+    }
+    else if (acquireResult == vk::Result::eSuboptimalKHR)
+    {
+        Log::warn("vk::SwapchainKHR::acquireNextImage returned vk::Result::eSuboptimalKHR");
+    }
+    else if (acquireResult != vk::Result::eSuccess)
+    {
+        Log::error("vk::SwapchainKHR::acquireNextImage returned {}", vk::to_string(acquireResult));
+    }
+
+    // each image has its own semaphore to indicate it is ready for presentation
+    auto& renderFinishedSemaphore = _renderFinishedSemaphores[imageIndex];
+
+    commandBuffer.reset();
     recordCommandBuffer(imageIndex);
-
-    _queue.waitIdle(); // NOTE: for simplicity, wait for the queue to be idle before starting the frame
-                       // In the next chapter you see how to use multiple frames in flight and fences to sync
 
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
     const vk::SubmitInfo   submitInfo{
         .waitSemaphoreCount   = 1,
-        .pWaitSemaphores      = &*_presentCompleteSemaphore,
+        .pWaitSemaphores      = &*presentCompleteSemaphore,
         .pWaitDstStageMask    = &waitDestinationStageMask,
         .commandBufferCount   = 1,
-        .pCommandBuffers      = &*_commandBuffer,
+        .pCommandBuffers      = &*commandBuffer,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores    = &*_renderFinishedSemaphore
+        .pSignalSemaphores    = &*renderFinishedSemaphore
     };
-    _queue.submit(submitInfo, *_drawFence);
+
+    _device.resetFences(*drawFence);
+    _queue.submit(submitInfo, *drawFence);
 
     const vk::PresentInfoKHR presentInfoKHR{
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = &*_renderFinishedSemaphore,
+        .pWaitSemaphores    = &*renderFinishedSemaphore,
         .swapchainCount     = 1,
         .pSwapchains        = &*_swapchain,
         .pImageIndices      = &imageIndex
     };
-    result = _queue.presentKHR(presentInfoKHR);
-    switch (result)
+    auto presentResult = _queue.presentKHR(presentInfoKHR);
+    if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR ||
+        _frameBufferResized)
     {
-    case vk::Result::eSuccess:
-        break;
-    case vk::Result::eSuboptimalKHR:
-        Log::warn("vk::Queue::presentKHR returned vk::Result::eSuboptimalKHR !");
-        break;
-    default:
-        Log::warn("vk::Queue::presentKHR returned unexpected result!");
-        break;
+        _frameBufferResized = false;
+        recreateSwapchain();
+        return;
     }
+    else if (presentResult != vk::Result::eSuccess)
+    {
+        Log::error("vk::Queue::presentKHR returned {}", vk::to_string(presentResult));
+    }
+
+    _frameIndex = (_frameIndex + 1) % _framesInFlight;
 }
 
 ////////////////////////////////////////////////////////////
@@ -148,6 +178,28 @@ void VulkanContext::drawFrame()
 void VulkanContext::waitIdle()
 {
     _queue.waitIdle();
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::recreateSwapchain()
+{
+    waitIdle();
+
+    // manually clear to avoid vk::NativeWindowInUseKHRError
+    // vk::raii will automatically destruct these,
+    // but there will be 2 swapchains assigned to a single surface just before this
+    _swapchain.clear();
+    _swapImageViews.clear();
+
+    createSwapchain();
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::resizeFramebuffer(uint32_t width, uint32_t height)
+{
+    _frameBufferResized = true;
 }
 
 ////////////////////////////////////////////////////////////
@@ -225,8 +277,8 @@ void VulkanContext::createDebugCallback()
     // create debug callback for any severity and type
     vk::DebugUtilsMessengerCreateInfoEXT debugMessengerInfo{
         .messageSeverity =
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+            // vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+        vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
         .messageType     = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
                            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
                            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
@@ -238,11 +290,11 @@ void VulkanContext::createDebugCallback()
 
 ////////////////////////////////////////////////////////////
 
-void VulkanContext::createSurface(GLFWwindow* window)
+void VulkanContext::createSurface()
 {
     // GLFW cannot use raii
     VkSurfaceKHR surface;
-    VkResult     res = glfwCreateWindowSurface(*_instance, window, nullptr, &surface);
+    VkResult     res = glfwCreateWindowSurface(*_instance, _window, nullptr, &surface);
     if (res != VK_SUCCESS)
         FATAL("glfwCreateWindowSurface failed");
 
@@ -300,6 +352,7 @@ void VulkanContext::createLogicalDevice()
         .enabledExtensionCount   = 1,
         .ppEnabledExtensionNames = deviceExtensions
     };
+    // enable to avoid validation layer errors
     vk::PhysicalDeviceVulkan11Features deviceFeatures11{.shaderDrawParameters = true};
     vk::PhysicalDeviceVulkan13Features deviceFeatures13{.synchronization2 = true, .dynamicRendering = true};
     vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan13Features>
@@ -328,14 +381,22 @@ void VulkanContext::createSwapchain()
 
     // --- Obtain surface capabilities --- //
     vk::SurfaceCapabilitiesKHR caps = _physicalDevice.getSurfaceCapabilitiesKHR(_surface);
-    _imageCount                     = std::max(caps.minImageCount + 1, caps.maxImageCount);
-    if (_imageCount == 0)
+
+    // image count
+    uint32_t imageCount = std::max(caps.minImageCount + 1, caps.maxImageCount);
+    if (imageCount == 0)
         FATAL("Vulkan surface does not support any images");
+
+    // --- Set swapchain extent --- //
+    int width, height;
+    glfwGetFramebufferSize(_window, &width, &height);
+    _swapChainExtent.width  = width;
+    _swapChainExtent.height = height;
 
     // --- Create swapchain --- //
     vk::SwapchainCreateInfoKHR swapChainInfo{
         .surface               = *_surface,
-        .minImageCount         = _imageCount,
+        .minImageCount         = imageCount,
         .imageFormat           = _surfaceFormat.format,
         .imageColorSpace       = _surfaceFormat.colorSpace,
         .imageExtent           = _swapChainExtent,
@@ -356,7 +417,7 @@ void VulkanContext::createSwapchain()
     _swapImages = _swapchain.getImages();
 
     // --- Create image views --- //
-    _swapImageViews.reserve(_swapImages.size());
+    _swapImageViews.reserve(imageCount);
     for (const auto& image : _swapImages)
     {
         vk::ImageViewCreateInfo imageViewInfo{
@@ -468,16 +529,17 @@ void VulkanContext::createCommandPool()
 void VulkanContext::createCommandBuffer()
 {
     vk::CommandBufferAllocateInfo allocInfo{
-        .commandPool = _commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = 1
+        .commandPool = _commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = _framesInFlight
     };
-    _commandBuffer = std::move(_device.allocateCommandBuffers(allocInfo).front());
+    _commandBuffers = _device.allocateCommandBuffers(allocInfo);
 }
 
 ////////////////////////////////////////////////////////////
 
 void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
 {
-    _commandBuffer.begin({});
+    auto& commandBuffer = _commandBuffers[_frameIndex];
+    commandBuffer.begin({});
 
     // Before starting rendering, transition the swapchain image to vk::ImageLayout::eColorAttachmentOptimal
     transition_image_layout(
@@ -504,9 +566,9 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
         .pColorAttachments    = &attachmentInfo
     };
 
-    _commandBuffer.beginRendering(renderingInfo);
-    _commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
-    _commandBuffer.setViewport(
+    commandBuffer.beginRendering(renderingInfo);
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
+    commandBuffer.setViewport(
         0,
         vk::Viewport(
             0.0f,
@@ -517,9 +579,9 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
             1.0f
         )
     );
-    _commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swapChainExtent));
-    _commandBuffer.draw(3, 1, 0, 0);
-    _commandBuffer.endRendering();
+    commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swapChainExtent));
+    commandBuffer.draw(3, 1, 0, 0);
+    commandBuffer.endRendering();
 
     // After rendering, transition the swapchain image to vk::ImageLayout::ePresentSrcKHR
     transition_image_layout(
@@ -531,16 +593,28 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
         vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
         vk::PipelineStageFlagBits2::eBottomOfPipe           // dstStage
     );
-    _commandBuffer.end();
+    commandBuffer.end();
 }
 
 ////////////////////////////////////////////////////////////
 
 void VulkanContext::createSyncObjects()
 {
-    _presentCompleteSemaphore = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
-    _renderFinishedSemaphore  = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
-    _drawFence                = vk::raii::Fence(_device, {.flags = vk::FenceCreateFlagBits::eSignaled});
+    if (!_presentCompleteSemaphores.empty() || !_renderFinishedSemaphores.empty() || !_drawFences.empty())
+        Log::error("Sync objects already exist!");
+
+    // Each image requires its own semaphore to indicate when it is ready for presentation
+    for (uint32_t i = 0; i < _swapImages.size(); i++)
+    {
+        _renderFinishedSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
+    }
+
+    // Each frame requires a fence to halt the host, and a semaphore to indicate when ready for rendering
+    for (uint32_t i = 0; i < _framesInFlight; i++)
+    {
+        _presentCompleteSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
+        _drawFences.emplace_back(_device, vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
+    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -576,7 +650,7 @@ void VulkanContext::transition_image_layout(
     vk::DependencyInfo dependency_info = {
         .dependencyFlags = {}, .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier
     };
-    _commandBuffer.pipelineBarrier2(dependency_info);
+    _commandBuffers[_frameIndex].pipelineBarrier2(dependency_info);
 }
 
 ////////////////////////////////////////////////////////////
