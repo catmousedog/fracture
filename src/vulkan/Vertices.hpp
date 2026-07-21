@@ -1,9 +1,10 @@
 #pragma once
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-
-#include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
+
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
 
 struct Vertex
 {
@@ -22,4 +23,11 @@ struct Vertex
              {.location = 1, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = offsetof(Vertex, color)}}
         };
     }
+};
+
+struct UniformBufferObject
+{
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
 };

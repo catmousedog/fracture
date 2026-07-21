@@ -37,9 +37,14 @@ class VulkanContext
     void pickPhysicalDevice();
     void createLogicalDevice();
     void createSwapchain();
+    void createDescriptorSetLayout();
     void createPipeline();
     void createCommandPool();
     void createVertexBuffer();
+    void createIndexBuffer();
+    void createUniformBuffers();
+    void createDescriptorPool();
+    void createDescriptorSets();
     void createCommandBuffer();
     void recordCommandBuffer(uint32_t imageIndex);
     void createSyncObjects();
@@ -53,7 +58,11 @@ class VulkanContext
         vk::PipelineStageFlags2 src_stage_mask,
         vk::PipelineStageFlags2 dst_stage_mask
     );
-    uint32_t           findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+    uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
+         createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+    void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size);
+    void updateUniformBuffer(uint32_t frameIndex);
     PFN_vkVoidFunction getFunctionEXT(const char* funcName);
 
     // GLFW
@@ -92,6 +101,16 @@ class VulkanContext
     vk::raii::PipelineLayout _pipelineLayout = nullptr;
     vk::raii::Pipeline       _pipeline       = nullptr;
 
+    // Descriptor set
+    vk::raii::DescriptorSetLayout        _descriptorSetLayout = nullptr;
+    vk::raii::DescriptorPool             _descriptorPool      = nullptr;
+    std::vector<vk::raii::DescriptorSet> _descriptorSets      = {};
+
+    // Uniform buffer (one per frame-in-flight)
+    std::vector<vk::raii::Buffer>       _uniformBuffers       = {};
+    std::vector<vk::raii::DeviceMemory> _uniformBuffersMemory = {};
+    std::vector<void*>                  _uniformBuffersMapped = {};
+
     // Sync objects
     std::vector<vk::raii::Fence>     _drawFences                = {};
     std::vector<vk::raii::Semaphore> _renderFinishedSemaphores  = {};
@@ -99,10 +118,14 @@ class VulkanContext
 
     // Vertex buffer
     std::vector<Vertex> _vertices = {
-        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}}, //
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},  //
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}  //
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}}, //
+        {{0.5f, -0.5f}, {1.0f, 1.0f, 0.0f}},  //
+        {{0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}},   //
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}   //
     };
     vk::raii::Buffer       _vertexBuffer       = nullptr;
     vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
+    std::vector<uint16_t>  _indices            = {0, 1, 2, 2, 3, 0};
+    vk::raii::Buffer       _indexBuffer        = nullptr;
+    vk::raii::DeviceMemory _indexBufferMemory  = nullptr;
 };

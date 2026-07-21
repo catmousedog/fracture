@@ -8,4 +8,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_subdirectory(imgui)
 
+add_subdirectory(shaders)
+
 add_subdirectory(src)

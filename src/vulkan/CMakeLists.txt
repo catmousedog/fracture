@@ -21,3 +21,7 @@ target_include_directories(${TARGET} PRIVATE
 	${imgui_SOURCE_DIR}
     ../util
 )
+
+add_dependencies(${TARGET} shaders)
+
+target_compile_definitions(${TARGET} PRIVATE SHADER_DIR="${CMAKE_BINARY_DIR}/shaders/")
