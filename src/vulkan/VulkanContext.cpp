@@ -91,6 +91,7 @@ VulkanContext::VulkanContext(GLFWwindow* window, const VulkanContextInfo& info)
     createSwapchain();
     createPipeline();
     createCommandPool();
+    createVertexBuffer();
     createCommandBuffer();
     createSyncObjects();
 }
@@ -457,7 +458,14 @@ void VulkanContext::createPipeline()
     };
     vk::PipelineShaderStageCreateInfo shaderStagesInfo[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-    vk::PipelineVertexInputStateCreateInfo   vertexInputInfo;
+    auto                                   bindingDescription    = Vertex::getBindingDescription();
+    auto                                   attributeDescriptions = Vertex::getAttributeDescriptions();
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+        .vertexBindingDescriptionCount   = 1,
+        .pVertexBindingDescriptions      = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions    = attributeDescriptions.data()
+    };
     vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo{.topology = vk::PrimitiveTopology::eTriangleList};
     vk::PipelineViewportStateCreateInfo      viewportInfo{.viewportCount = 1, .scissorCount = 1};
 
@@ -526,6 +534,34 @@ void VulkanContext::createCommandPool()
 
 ////////////////////////////////////////////////////////////
 
+void VulkanContext::createVertexBuffer()
+{
+    vk::BufferCreateInfo bufferInfo{
+        .size        = sizeof(_vertices[0]) * _vertices.size(),
+        .usage       = vk::BufferUsageFlagBits::eVertexBuffer,
+        .sharingMode = vk::SharingMode::eExclusive
+    };
+    _vertexBuffer = vk::raii::Buffer(_device, bufferInfo);
+
+    vk::MemoryRequirements memRequirements = _vertexBuffer.getMemoryRequirements();
+    vk::MemoryAllocateInfo memoryAllocateInfo{
+        .allocationSize  = memRequirements.size,
+        .memoryTypeIndex = findMemoryType(
+            memRequirements.memoryTypeBits,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+        )
+    };
+    _vertexBufferMemory = vk::raii::DeviceMemory(_device, memoryAllocateInfo);
+
+    _vertexBuffer.bindMemory(*_vertexBufferMemory, 0);
+
+    void* data = _vertexBufferMemory.mapMemory(0, bufferInfo.size);
+    memcpy(data, _vertices.data(), bufferInfo.size);
+    _vertexBufferMemory.unmapMemory();
+}
+
+////////////////////////////////////////////////////////////
+
 void VulkanContext::createCommandBuffer()
 {
     vk::CommandBufferAllocateInfo allocInfo{
@@ -580,7 +616,8 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
         )
     );
     commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swapChainExtent));
-    commandBuffer.draw(3, 1, 0, 0);
+    commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
+    commandBuffer.draw(static_cast<uint32_t>(_vertices.size()), 1, 0, 0);
     commandBuffer.endRendering();
 
     // After rendering, transition the swapchain image to vk::ImageLayout::ePresentSrcKHR
@@ -651,6 +688,21 @@ void VulkanContext::transition_image_layout(
         .dependencyFlags = {}, .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier
     };
     _commandBuffers[_frameIndex].pipelineBarrier2(dependency_info);
+}
+
+////////////////////////////////////////////////////////////
+
+uint32_t VulkanContext::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+{
+    vk::PhysicalDeviceMemoryProperties memProperties = _physicalDevice.getMemoryProperties();
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+    {
+        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            return i;
+    }
+
+    FATAL("failed to find suitable memory type {}:{}", vk::to_string(properties), typeFilter);
 }
 
 ////////////////////////////////////////////////////////////

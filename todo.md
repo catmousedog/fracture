@@ -1,0 +1,1 @@
+- [ ] fix CMakeLists for glfw and glm (fetch content?)

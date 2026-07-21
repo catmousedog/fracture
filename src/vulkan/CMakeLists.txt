@@ -13,6 +13,7 @@ target_link_libraries(${TARGET} PRIVATE
     Vulkan::Vulkan
     util
 	glfw
+	glm
 )
 
 target_include_directories(${TARGET} PRIVATE

@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "Vertices.hpp"
+
 class GLFWwindow;
 
 struct VulkanContextInfo
@@ -37,6 +39,7 @@ class VulkanContext
     void createSwapchain();
     void createPipeline();
     void createCommandPool();
+    void createVertexBuffer();
     void createCommandBuffer();
     void recordCommandBuffer(uint32_t imageIndex);
     void createSyncObjects();
@@ -50,9 +53,10 @@ class VulkanContext
         vk::PipelineStageFlags2 src_stage_mask,
         vk::PipelineStageFlags2 dst_stage_mask
     );
+    uint32_t           findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
     PFN_vkVoidFunction getFunctionEXT(const char* funcName);
 
-    // Window
+    // GLFW
     GLFWwindow* _window = nullptr;
 
     // Core
@@ -92,4 +96,13 @@ class VulkanContext
     std::vector<vk::raii::Fence>     _drawFences                = {};
     std::vector<vk::raii::Semaphore> _renderFinishedSemaphores  = {};
     std::vector<vk::raii::Semaphore> _presentCompleteSemaphores = {};
+
+    // Vertex buffer
+    std::vector<Vertex> _vertices = {
+        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}}, //
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},  //
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}  //
+    };
+    vk::raii::Buffer       _vertexBuffer       = nullptr;
+    vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
 };
