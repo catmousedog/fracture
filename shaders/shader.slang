@@ -1,35 +1,42 @@
 struct VSInput {
     float2 inPos;
-    float3 inColor;
-    float2 inTexCoord;
 };
-
-struct UniformBuffer {
-    float4x4 model;
-    float4x4 view;
-    float4x4 proj;
-};
-ConstantBuffer<UniformBuffer> ubo;
 
 struct VSOutput
 {
     float4 pos : SV_Position;
-    float3 fragColor;
-    float2 fragTexCoord;
+    float2 coord;
 };
 
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
     VSOutput output;
-    output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPos, 0.0, 1.0))));
-    output.fragColor = input.inColor;
-    output.fragTexCoord = input.inTexCoord;
+    output.pos = float4(input.inPos, 0.0, 1.0);
+	output.coord = input.inPos;
     return output;
 }
 
-Sampler2D texture;
-
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
-      return float4(vertIn.fragColor * texture.Sample(vertIn.fragTexCoord).rgb, 1.0);
+
+    float cx = vertIn.coord.x;
+    float cy = vertIn.coord.y;
+
+    float x = 0;
+    float y = 0;
+
+    int i;
+    for (i = 0; i < 100; i++) {
+        float tx = x;
+
+        x = x * x - y * y + cx;
+        y = 2 * tx * y + cy;
+
+        if (x * x + y * y > 4) {
+            break;
+        }
+    }
+
+    float color = float(i) / 100.0;
+    return float4(color, color, color, 1.0);
 }
