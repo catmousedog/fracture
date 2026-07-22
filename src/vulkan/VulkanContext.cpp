@@ -1,8 +1,5 @@
 #include "VulkanContext.hpp"
 
-#include <vulkan/vk_enum_string_helper.h>
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
 #include <GLFW/glfw3.h>
@@ -10,14 +7,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <algorithm>
 #include <chrono>
-#include <cstdint>
 #include <fstream>
-#include <string>
-#include <vector>
 
-#include "Basics.hpp"
 #include "Log.hpp"
 #include "vulkan/vulkan.hpp"
 
@@ -107,6 +99,71 @@ VulkanContext::VulkanContext(GLFWwindow* window, const VulkanContextInfo& info)
     createDescriptorSets();
     createCommandBuffer();
     createSyncObjects();
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::logInfo()
+{
+
+    // get highest available version
+    uint32_t availVersion;
+    vkEnumerateInstanceVersion(&availVersion);
+    Log::info(
+        "Available Vulkan instance version: {}.{}.{}",
+        VK_API_VERSION_MAJOR(availVersion),
+        VK_API_VERSION_MINOR(availVersion),
+        VK_API_VERSION_PATCH(availVersion)
+    );
+
+    // --- Physical Devices ---
+    auto physicalDevices = _instance.enumeratePhysicalDevices();
+
+    Log::info("Vulkan compatible devices:");
+    for (const auto& physicalDevice : physicalDevices)
+    {
+        // get device properties
+        const auto& deviceProperties = physicalDevice.getProperties();
+        string      name             = deviceProperties.deviceName;
+        Log::info_t(1, "{}{}", Log::Color::Bold, name);
+
+        // --- Queue Families ---
+        auto queueFamilies = physicalDevice.getQueueFamilyProperties();
+
+        Log::info_t(2, "QUEUE FAMILIES:");
+        for (uint32_t f = 0; f < queueFamilies.size(); f++)
+        {
+            const auto& queueFamily = queueFamilies[f];
+
+            // get queue count
+            uint32_t queueCount = queueFamily.queueCount;
+
+            // get queue flags
+            auto flags = queueFamily.queueFlags;
+            Log::info_t(3, "family {}: {} queue(s) {}", f, queueCount, vk::to_string(flags));
+        }
+
+        // --- Memory Properties ---
+        auto memProps = physicalDevice.getMemoryProperties();
+
+        Log::info_t(2, "MEMORY PROPERTIES:");
+        for (uint32_t i = 0; i < memProps.memoryHeapCount; i++)
+        {
+            auto& heap = memProps.memoryHeaps[i];
+            Log::info_t(3, "heap {}: {} MB {}", i, heap.size / 1024 / 1024, vk::to_string(heap.flags));
+
+            for (uint32_t j = 0; j < memProps.memoryTypeCount; j++)
+            {
+                auto& type = memProps.memoryTypes[j];
+                if (type.heapIndex != i)
+                    continue;
+
+                Log::info_t(4, "type {}: {}", j, vk::to_string(type.propertyFlags));
+            }
+        }
+
+        Log::info_t(0, "");
+    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -520,7 +577,7 @@ void VulkanContext::createPipeline()
         .pAttachments    = &colorBlendAttachmentInfo
     };
 
-    std::vector<vk::DynamicState>      dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vector<vk::DynamicState>           dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()
     };
@@ -645,8 +702,8 @@ void VulkanContext::createDescriptorPool()
 
 void VulkanContext::createDescriptorSets()
 {
-    std::vector<vk::DescriptorSetLayout> layouts(_framesInFlight, *_descriptorSetLayout);
-    vk::DescriptorSetAllocateInfo        allocInfo{
+    vector<vk::DescriptorSetLayout> layouts(_framesInFlight, *_descriptorSetLayout);
+    vk::DescriptorSetAllocateInfo   allocInfo{
         .descriptorPool     = _descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
         .pSetLayouts        = layouts.data()

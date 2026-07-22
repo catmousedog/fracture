@@ -45,20 +45,6 @@ constexpr std::string_view BrightWhite   = "\033[97m";
 
 } // namespace Color
 
-// ---- Core colored print ----
-
-template <typename... Args>
-void print(std::string_view color, std::format_string<Args...> fmt, Args&&... args)
-{
-    std::print("{}{}{}", color, std::format(fmt, std::forward<Args>(args)...), Color::Reset);
-}
-
-template <typename... Args>
-void println(std::string_view color, std::format_string<Args...> fmt, Args&&... args)
-{
-    std::println("{}{}{}", color, std::format(fmt, std::forward<Args>(args)...), Color::Reset);
-}
-
 // ---- Log levels ----
 
 template <typename... Args>
@@ -72,12 +58,18 @@ void info(std::format_string<Args...> fmt, Args&&... args)
 }
 
 template <typename... Args>
-void info_t(std::format_string<Args...> fmt, Args&&... args)
+void info_t(int indent, std::format_string<Args...> fmt, Args&&... args)
 {
     if (level > Level::Info)
         return;
 
-    std::println("        {}{}{}", Color::White, std::format(fmt, std::forward<Args>(args)...), Color::Reset);
+    std::println(
+        "        {}{}{}{}",
+        Color::White,
+        std::string(indent * 2, ' '),
+        std::format(fmt, std::forward<Args>(args)...),
+        Color::Reset
+    );
 }
 
 template <typename... Args>
@@ -91,12 +83,18 @@ void warn(std::format_string<Args...> fmt, Args&&... args)
 }
 
 template <typename... Args>
-void warn_t(std::format_string<Args...> fmt, Args&&... args)
+void warn_t(int indent, std::format_string<Args...> fmt, Args&&... args)
 {
     if (level > Level::Warn)
         return;
 
-    std::println("        {}{}{}", Color::Yellow, std::format(fmt, std::forward<Args>(args)...), Color::Reset);
+    std::println(
+        "        {}{}{}{}",
+        Color::Yellow,
+        std::string(indent * 2, ' '),
+        std::format(fmt, std::forward<Args>(args)...),
+        Color::Reset
+    );
 }
 
 template <typename... Args>
@@ -110,12 +108,18 @@ void debug(std::format_string<Args...> fmt, Args&&... args)
 }
 
 template <typename... Args>
-void debug_t(std::format_string<Args...> fmt, Args&&... args)
+void debug_t(int indent, std::format_string<Args...> fmt, Args&&... args)
 {
     if (level > Level::Debug)
         return;
 
-    std::println("        {}{}{}", Color::Dim, std::format(fmt, std::forward<Args>(args)...), Color::Reset);
+    std::println(
+        "        {}{}{}",
+        Color::Dim,
+        std::string(indent * 2, ' '),
+        std::format(fmt, std::forward<Args>(args)...),
+        Color::Reset
+    );
 }
 
 template <typename... Args>
@@ -129,12 +133,18 @@ void error(std::format_string<Args...> fmt, Args&&... args)
 }
 
 template <typename... Args>
-void error_t(std::format_string<Args...> fmt, Args&&... args)
+void error_t(int indent, std::format_string<Args...> fmt, Args&&... args)
 {
     if (level > Level::Error)
         return;
 
-    std::println("        {}{}{}", Color::Red, std::format(fmt, std::forward<Args>(args)...), Color::Reset);
+    std::println(
+        "        {}{}{}{}",
+        Color::Red,
+        std::string(indent * 2, ' '),
+        std::format(fmt, std::forward<Args>(args)...),
+        Color::Reset
+    );
 }
 
 template <typename... Args>

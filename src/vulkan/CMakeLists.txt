@@ -9,18 +9,25 @@ add_library(${TARGET}
 	${IMGUI_SOURCES}
 )
 
+# PRIVATE
 target_link_libraries(${TARGET} PRIVATE
     Vulkan::Vulkan
-    util
 	glfw
 	glm
 )
-
 target_include_directories(${TARGET} PRIVATE
     ${Vulkan_INCLUDE_DIRS}
 	${imgui_SOURCE_DIR}
+)
+
+# PUBLIC
+target_link_libraries(${TARGET} PUBLIC
+    util
+)
+target_include_directories(${TARGET} PUBLIC
     ../util
 )
+
 
 add_dependencies(${TARGET} shaders)
 

@@ -25,6 +25,7 @@ int main()
 
     VulkanContextInfo vulkanInfo{.framesInFlight = 2};
     VulkanContext     vulkan(window, vulkanInfo);
+    vulkan.logInfo();
 
     glfwSetWindowUserPointer(window, &vulkan);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
