@@ -4,6 +4,7 @@
 #define GLFW_INCLUDE_VULKAN
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
+#define STB_IMAGE_IMPLEMENTATION
 
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
@@ -40,6 +41,9 @@ class VulkanContext
     void createDescriptorSetLayout();
     void createPipeline();
     void createCommandPool();
+    void createTextureImage();
+    void createTextureImageView();
+    void createTextureSampler();
     void createVertexBuffer();
     void createIndexBuffer();
     void createUniformBuffers();
@@ -60,10 +64,33 @@ class VulkanContext
     );
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
-         createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
-    void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size);
-    void updateUniformBuffer(uint32_t frameIndex);
-    PFN_vkVoidFunction getFunctionEXT(const char* funcName);
+    createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+    vk::raii::CommandBuffer                            beginSingleTimeCommands();
+    void                                               endSingleTimeCommands(vk::raii::CommandBuffer&& commandBuffer);
+    void                                               updateUniformBuffer(uint32_t frameIndex);
+    std::pair<vk::raii::Image, vk::raii::DeviceMemory> createImage(
+        uint32_t                width,
+        uint32_t                height,
+        vk::Format              format,
+        vk::ImageTiling         tiling,
+        vk::ImageUsageFlags     usage,
+        vk::MemoryPropertyFlags properties
+    );
+    void transitionImageLayout(
+        vk::raii::CommandBuffer& commandBuffer,
+        const vk::raii::Image&   image,
+        vk::ImageLayout          oldLayout,
+        vk::ImageLayout          newLayout
+    );
+    void copyBufferToImage(
+        vk::raii::CommandBuffer& commandBuffer,
+        const vk::raii::Buffer&  buffer,
+        vk::raii::Image&         image,
+        uint32_t                 width,
+        uint32_t                 height
+    );
+    vk::raii::ImageView createImageView(vk::raii::Image const& image, vk::Format format);
+    PFN_vkVoidFunction  getFunctionEXT(const char* funcName);
 
     // GLFW
     GLFWwindow* _window = nullptr;
@@ -117,15 +144,21 @@ class VulkanContext
     vector<vk::raii::Semaphore> _presentCompleteSemaphores = {};
 
     // Vertex buffer
-    vector<Vertex> _vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}}, //
-        {{0.5f, -0.5f}, {1.0f, 1.0f, 0.0f}},  //
-        {{0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}},   //
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}   //
+    std::vector<Vertex> _vertices = {
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, -0.5f}, {1.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
     };
     vk::raii::Buffer       _vertexBuffer       = nullptr;
     vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
     vector<uint16_t>       _indices            = {0, 1, 2, 2, 3, 0};
     vk::raii::Buffer       _indexBuffer        = nullptr;
     vk::raii::DeviceMemory _indexBufferMemory  = nullptr;
+
+    // Texture
+    vk::raii::Image        _textureImage       = nullptr;
+    vk::raii::DeviceMemory _textureImageMemory = nullptr;
+    vk::raii::ImageView    _textureImageView   = nullptr;
+    vk::raii::Sampler      _textureSampler     = nullptr;
 };

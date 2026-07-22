@@ -32,3 +32,4 @@ target_include_directories(${TARGET} PUBLIC
 add_dependencies(${TARGET} shaders)
 
 target_compile_definitions(${TARGET} PRIVATE SHADER_DIR="${CMAKE_BINARY_DIR}/shaders/")
+target_compile_definitions(${TARGET} PRIVATE TEXTURE_DIR="${CMAKE_SOURCE_DIR}/textures/")
