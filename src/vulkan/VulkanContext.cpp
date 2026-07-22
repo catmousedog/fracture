@@ -122,9 +122,6 @@ void VulkanContext::logInfo()
         // --- Limits ---
         const auto& limits = deviceProperties.limits;
         Log::info_t(2, "LIMITS:");
-        Log::info_t(3, "maxImageDimension1D: {}", limits.maxImageDimension1D);
-        Log::info_t(3, "maxImageDimension2D: {}", limits.maxImageDimension2D);
-        Log::info_t(3, "maxImageDimension3D: {}", limits.maxImageDimension3D);
         Log::info_t(3, "maxSamplerAnisotropy: {}", limits.maxSamplerAnisotropy);
         Log::info_t(3, "maxPushConstantsSize: {}", limits.maxPushConstantsSize);
 
@@ -199,9 +196,6 @@ void VulkanContext::drawFrame()
     // each image has its own semaphore to indicate it is ready for presentation
     auto& renderFinishedSemaphore = _renderFinishedSemaphores[imageIndex];
 
-    // update uniform buffer
-    // updateUniformBuffer(_frameIndex);
-
     commandBuffer.reset();
     recordCommandBuffer(imageIndex);
 
@@ -269,6 +263,29 @@ void VulkanContext::recreateSwapchain()
 void VulkanContext::resizeFramebuffer(uint32_t width, uint32_t height)
 {
     _frameBufferResized = true;
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::addZoom(float zoom)
+{
+    _fp.zoom *= zoom;
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::addOffset(float x, float y)
+{
+    _fp.offsetX += x * _fp.zoom;
+    _fp.offsetY += y * _fp.zoom;
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::addIterations(float mult)
+{
+    _fp.maxIter *= mult;
+    _fp.maxIter = std::max(_fp.maxIter, 10);
 }
 
 ////////////////////////////////////////////////////////////
@@ -583,8 +600,11 @@ void VulkanContext::createPipeline()
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()
     };
 
+    vk::PushConstantRange pushConstantRange{
+        .stageFlags = vk::ShaderStageFlagBits::eFragment, .offset = 0, .size = sizeof(FractalPushConstants)
+    };
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-        .setLayoutCount = 0, .pSetLayouts = nullptr, .pushConstantRangeCount = 0
+        .setLayoutCount = 0, .pushConstantRangeCount = 1, .pPushConstantRanges = &pushConstantRange
     };
     _pipelineLayout = vk::raii::PipelineLayout(_device, pipelineLayoutInfo);
 
@@ -729,6 +749,7 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
     commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swapChainExtent));
     commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
+    commandBuffer.pushConstants<FractalPushConstants>(*_pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, _fp);
     commandBuffer.drawIndexed(static_cast<uint32_t>(_indices.size()), 1, 0, 0, 0);
     commandBuffer.endRendering();
 

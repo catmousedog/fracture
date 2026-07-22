@@ -29,6 +29,9 @@ class VulkanContext
     void waitIdle();
     void recreateSwapchain();
     void resizeFramebuffer(uint32_t width, uint32_t height);
+    void addZoom(float zoom);
+    void addOffset(float x, float y);
+    void addIterations(float mult);
 
   private:
     void createInstance();
@@ -101,6 +104,14 @@ class VulkanContext
     vector<vk::raii::Fence>     _drawFences                = {};
     vector<vk::raii::Semaphore> _renderFinishedSemaphores  = {};
     vector<vk::raii::Semaphore> _presentCompleteSemaphores = {};
+
+    // Push constants
+    FractalPushConstants _fp{
+        .offsetX = 0.0f, //
+        .offsetY = 0.0f, //
+        .zoom    = 1.0f, //
+        .maxIter = 100   //
+    };
 
     // Vertex buffer
     std::vector<Vertex> _vertices = {
