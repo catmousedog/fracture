@@ -9,6 +9,10 @@
 #include "Log.hpp"
 #include "vulkan/vulkan.hpp"
 
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_vulkan.h"
+#include "imgui.h"
+
 ////////////////////////////////////////////////////////////
 
 namespace
@@ -91,6 +95,16 @@ VulkanContext::VulkanContext(GLFWwindow* window, const VulkanContextInfo& info)
     createIndexBuffer();
     createCommandBuffer();
     createSyncObjects();
+    initImGUI();
+}
+
+////////////////////////////////////////////////////////////
+
+VulkanContext::~VulkanContext()
+{
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 }
 
 ////////////////////////////////////////////////////////////
@@ -162,6 +176,42 @@ void VulkanContext::logInfo()
 
         Log::info_t(0, "");
     }
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::drawImGUI()
+{
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    // ImGuiViewport* viewport  = ImGui::GetMainViewport();
+    // float          barHeight = 30.0f;
+
+    // ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + viewport->WorkSize.y - barHeight));
+    // ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, barHeight));
+
+    // ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | // no title bar, no resize border
+    //                          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+    //                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+    // ImGui::Begin("StatusBar", nullptr, flags);
+
+    // ImGui::Text(
+    //     "Zoom: %.3f  Offset: (%.3f, %.3f)  Iter: %d  FPS: %.1f",
+    //     _fp.zoom,
+    //     _fp.offsetX,
+    //     _fp.offsetY,
+    //     _fp.maxIter,
+    //     ImGui::GetIO().Framerate
+    // );
+
+    // ImGui::End();
+
+    ImGui::ShowDemoWindow(&_test);
+
+    ImGui::Render();
 }
 
 ////////////////////////////////////////////////////////////
@@ -751,6 +801,7 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
     commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
     commandBuffer.pushConstants<FractalPushConstants>(*_pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, _fp);
     commandBuffer.drawIndexed(static_cast<uint32_t>(_indices.size()), 1, 0, 0, 0);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffer);
     commandBuffer.endRendering();
 
     // After rendering, transition the swapchain image to vk::ImageLayout::ePresentSrcKHR
@@ -785,6 +836,46 @@ void VulkanContext::createSyncObjects()
         _presentCompleteSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
         _drawFences.emplace_back(_device, vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
     }
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::initImGUI()
+{
+    vk::DescriptorPoolSize poolSizes[] = {
+        {vk::DescriptorType::eSampledImage, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLED_IMAGE_POOL_SIZE}, // 8
+        {vk::DescriptorType::eSampler, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE}             // 2
+    };
+    vk::DescriptorPoolCreateInfo pool_info = {
+        .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets       = 10, // 8 + 2
+        .poolSizeCount = 2,
+        .pPoolSizes    = poolSizes
+    };
+    _descriptorPool = vk::raii::DescriptorPool(_device, pool_info);
+
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForVulkan(_window, true);
+
+    vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo = {
+        .colorAttachmentCount    = 1,                     //
+        .pColorAttachmentFormats = &_surfaceFormat.format //
+    };
+
+    ImGui_ImplVulkan_InitInfo initInfo{
+        .Instance            = *_instance,
+        .PhysicalDevice      = *_physicalDevice,
+        .Device              = *_device,
+        .QueueFamily         = _familyIndex,
+        .Queue               = *_queue,
+        .DescriptorPool      = *_descriptorPool,
+        .MinImageCount       = _framesInFlight,
+        .ImageCount          = _framesInFlight,
+        .PipelineInfoMain    = {.PipelineRenderingCreateInfo = pipelineRenderingCreateInfo},
+        .UseDynamicRendering = true
+    };
+
+    ImGui_ImplVulkan_Init(&initInfo);
 }
 
 ////////////////////////////////////////////////////////////

@@ -1,3 +1,5 @@
+set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/build/_deps CACHE PATH "" FORCE)
+
 include(FetchContent)
 FetchContent_Declare(
     imgui

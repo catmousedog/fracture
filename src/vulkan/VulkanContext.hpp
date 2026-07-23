@@ -22,9 +22,11 @@ class VulkanContext
 {
   public:
     VulkanContext(GLFWwindow* window, const VulkanContextInfo& info);
+    ~VulkanContext();
 
     void logInfo();
 
+    void drawImGUI();
     void drawFrame();
     void waitIdle();
     void recreateSwapchain();
@@ -47,6 +49,7 @@ class VulkanContext
     void createCommandBuffer();
     void recordCommandBuffer(uint32_t imageIndex);
     void createSyncObjects();
+    void initImGUI();
 
     void transition_image_layout(
         uint32_t                imageIndex,
@@ -125,4 +128,8 @@ class VulkanContext
     vector<uint16_t>       _indices            = {0, 1, 2, 2, 3, 0};
     vk::raii::Buffer       _indexBuffer        = nullptr;
     vk::raii::DeviceMemory _indexBufferMemory  = nullptr;
+
+    // ImGUI
+    vk::raii::DescriptorPool _descriptorPool = nullptr;
+    bool                     _test           = true;
 };

@@ -54,12 +54,13 @@ int main()
 
     glfwSetWindowUserPointer(window, &vulkan);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    glfwSetScrollCallback(window, scrollCallback);
-    glfwSetKeyCallback(window, keyCallback);
+    // glfwSetScrollCallback(window, scrollCallback);
+    // glfwSetKeyCallback(window, keyCallback);
 
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+        vulkan.drawImGUI();
         vulkan.drawFrame();
     }
 
