@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+find_package(glfw3 REQUIRED)
+find_package(glm REQUIRED)
+find_package(Vulkan REQUIRED)
+
 add_subdirectory(imgui)
 
 add_subdirectory(shaders)

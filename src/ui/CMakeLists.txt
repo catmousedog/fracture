@@ -1,4 +1,4 @@
-set(TARGET vulkan)
+set(TARGET ui)
 
 file(GLOB_RECURSE SOURCES "*.cpp")
 add_library(${TARGET} 
@@ -7,12 +7,10 @@ add_library(${TARGET}
 )
 
 target_link_libraries(${TARGET} PRIVATE
-	Vulkan::Vulkan
 	window
-	glm
 )
+
 target_include_directories(${TARGET} PRIVATE
-    ${Vulkan_INCLUDE_DIRS}
 	${IMGUI_INCLUDE}
 )
 

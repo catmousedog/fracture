@@ -1,12 +1,13 @@
-set(TARGET ${PROJECT_NAME})
+set(TARGET render)
 
 file(GLOB_RECURSE SOURCES "*.cpp")
-add_executable(${TARGET}
+add_library(${TARGET} 
 	${SOURCES}
 )
 
 target_link_libraries(${TARGET} PRIVATE
-	core
+	vulkan
+	window
 )
 
 LINK_SRC(${TARGET})

@@ -3,7 +3,7 @@ find_program(SLANGC_EXECUTABLE slangc REQUIRED)
 file(GLOB SHADER_SOURCES *.slang)
 
 set(SHADER_SOURCES
-    shader.slang
+    mandelbrot.slang
 )
 
 foreach(SHADER ${SHADER_SOURCES})

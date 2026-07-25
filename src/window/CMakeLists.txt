@@ -1,12 +1,12 @@
-set(TARGET ${PROJECT_NAME})
+set(TARGET window)
 
 file(GLOB_RECURSE SOURCES "*.cpp")
-add_executable(${TARGET}
+add_library(${TARGET} 
 	${SOURCES}
 )
 
 target_link_libraries(${TARGET} PRIVATE
-	core
+	glfw
 )
 
 LINK_SRC(${TARGET})

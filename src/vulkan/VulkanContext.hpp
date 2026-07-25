@@ -1,39 +1,25 @@
 #pragma once
 
-#define GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_VULKAN
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-#include "Basics.hpp"
 #include "Vertices.hpp"
-
-class GLFWwindow;
-
-struct VulkanContextInfo
-{
-    uint32_t framesInFlight = 2;
-};
+#include "util/Basics.hpp"
+#include "window/Window.hpp"
 
 class VulkanContext
 {
   public:
-    VulkanContext(GLFWwindow* window, const VulkanContextInfo& info);
-    ~VulkanContext();
+    VulkanContext(Window* window);
 
     void logInfo();
-
-    void drawImGUI();
+    void setShader(const vector<char>& shaderCode);
     void drawFrame();
     void waitIdle();
     void recreateSwapchain();
-    void resizeFramebuffer(uint32_t width, uint32_t height);
-    void addZoom(float zoom);
-    void addOffset(float x, float y);
-    void addIterations(float mult);
 
   private:
     void createInstance();
@@ -41,8 +27,9 @@ class VulkanContext
     void createSurface();
     void pickPhysicalDevice();
     void createLogicalDevice();
+    void createSurfaceFormat();
     void createSwapchain();
-    void createPipeline();
+    void createPipeline(const vector<char>& shaderCode);
     void createCommandPool();
     void createVertexBuffer();
     void createIndexBuffer();
@@ -68,7 +55,7 @@ class VulkanContext
     PFN_vkVoidFunction      getFunctionEXT(const char* funcName);
 
     // GLFW
-    GLFWwindow* _window = nullptr;
+    Window* _window = nullptr;
 
     // Core
     vk::raii::Context        _context;
@@ -90,31 +77,22 @@ class VulkanContext
     vk::SurfaceFormatKHR        _surfaceFormat   = {};
     vector<vk::Image>           _swapImages      = {};
     vector<vk::raii::ImageView> _swapImageViews  = {};
+    vk::SurfaceCapabilitiesKHR  _caps            = {};
+    uint32_t                    _imageCount      = 0;
 
     // Framebuffers & commands
-    uint32_t                        _framesInFlight     = 0;
-    uint32_t                        _frameIndex         = 0;
-    vk::raii::CommandPool           _commandPool        = nullptr;
-    vector<vk::raii::CommandBuffer> _commandBuffers     = {};
-    bool                            _frameBufferResized = false;
+    uint32_t                        _framesInFlight = 2;
+    uint32_t                        _frameIndex     = 0;
+    vk::raii::CommandPool           _commandPool    = nullptr;
+    vector<vk::raii::CommandBuffer> _commandBuffers = {};
 
     // pipeline
-    vk::raii::ShaderModule   _shader         = nullptr;
-    vk::raii::PipelineLayout _pipelineLayout = nullptr;
-    vk::raii::Pipeline       _pipeline       = nullptr;
+    vk::raii::Pipeline _pipeline = nullptr;
 
     // Sync objects
     vector<vk::raii::Fence>     _drawFences                = {};
     vector<vk::raii::Semaphore> _renderFinishedSemaphores  = {};
     vector<vk::raii::Semaphore> _presentCompleteSemaphores = {};
-
-    // Push constants
-    FractalPushConstants _fp{
-        .offsetX = 0.0f, //
-        .offsetY = 0.0f, //
-        .zoom    = 1.0f, //
-        .maxIter = 100   //
-    };
 
     // Vertex buffer
     std::vector<Vertex> _vertices = {
@@ -131,5 +109,4 @@ class VulkanContext
 
     // ImGUI
     vk::raii::DescriptorPool _descriptorPool = nullptr;
-    bool                     _test           = true;
 };

@@ -1,12 +1,3 @@
-struct PushConstants {
-    float offsetX, offsetY;
-    float zoom;
-    int maxIter;
-};
-
-[[vk::push_constant]]
-PushConstants pc;
-
 struct VSInput {
     float2 inPos;
 };
@@ -28,14 +19,14 @@ VSOutput vertMain(VSInput input) {
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
 
-    float cx = vertIn.coord.x * pc.zoom + pc.offsetX;
-    float cy = vertIn.coord.y * pc.zoom + pc.offsetY;
+    float cx = vertIn.coord.x;
+    float cy = vertIn.coord.y;
 
     float x = 0;
     float y = 0;
 
     int i;
-    for (i = 0; i < pc.maxIter; i++) {
+    for (i = 0; i < 100; i++) {
         float tx = x;
 
         x = x * x - y * y + cx;
@@ -46,6 +37,6 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
         }
     }
 
-    float color = float(i) / pc.maxIter;
+    float color = float(i) / 100.0;
     return float4(color, color, color, 1.0);
 }

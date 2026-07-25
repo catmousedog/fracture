@@ -1,17 +1,15 @@
+/* ====================== FRACTURE ====================== */
 #include "VulkanContext.hpp"
+#include "util/Log.hpp"
 
+/* ======================= Vulkan ======================= */
 #include <vulkan/vulkan_to_string.hpp>
 
-#include <GLFW/glfw3.h>
-
-#include <fstream>
-
-#include "Log.hpp"
-#include "vulkan/vulkan.hpp"
-
-#include "backends/imgui_impl_glfw.h"
+/* ======================== IMGUI ======================= */
 #include "backends/imgui_impl_vulkan.h"
 #include "imgui.h"
+
+#include <tuple>
 
 ////////////////////////////////////////////////////////////
 
@@ -53,43 +51,20 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(
 }
 ////////////////////////////////////////////////////////////
 
-vector<char> readShader(const string& filename)
-{
-    string shaderPath = SHADER_DIR + filename;
-
-    // seek end of file
-    std::ifstream file(shaderPath, std::ios::ate | std::ios::binary);
-
-    if (!file.is_open())
-        FATAL("failed to open shader at {}!", shaderPath);
-
-    vector<char> buffer(file.tellg());
-
-    file.seekg(0, std::ios::beg);
-    file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
-
-    file.close();
-
-    return buffer;
-}
-
-////////////////////////////////////////////////////////////
-
 } // namespace
 
 ////////////////////////////////////////////////////////////
 
-VulkanContext::VulkanContext(GLFWwindow* window, const VulkanContextInfo& info)
-    : _window(window),
-      _framesInFlight(info.framesInFlight)
+VulkanContext::VulkanContext(Window* window)
+    : _window(window)
 {
     createInstance();
     createDebugCallback();
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
+    createSurfaceFormat();
     createSwapchain();
-    createPipeline();
     createCommandPool();
     createVertexBuffer();
     createIndexBuffer();
@@ -100,18 +75,8 @@ VulkanContext::VulkanContext(GLFWwindow* window, const VulkanContextInfo& info)
 
 ////////////////////////////////////////////////////////////
 
-VulkanContext::~VulkanContext()
-{
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
-
-////////////////////////////////////////////////////////////
-
 void VulkanContext::logInfo()
 {
-
     // get highest available version
     uint32_t availVersion;
     vkEnumerateInstanceVersion(&availVersion);
@@ -180,38 +145,9 @@ void VulkanContext::logInfo()
 
 ////////////////////////////////////////////////////////////
 
-void VulkanContext::drawImGUI()
+void VulkanContext::setShader(const vector<char>& shaderCode)
 {
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    // ImGuiViewport* viewport  = ImGui::GetMainViewport();
-    // float          barHeight = 30.0f;
-
-    // ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + viewport->WorkSize.y - barHeight));
-    // ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, barHeight));
-
-    // ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | // no title bar, no resize border
-    //                          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-    //                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-    // ImGui::Begin("StatusBar", nullptr, flags);
-
-    // ImGui::Text(
-    //     "Zoom: %.3f  Offset: (%.3f, %.3f)  Iter: %d  FPS: %.1f",
-    //     _fp.zoom,
-    //     _fp.offsetX,
-    //     _fp.offsetY,
-    //     _fp.maxIter,
-    //     ImGui::GetIO().Framerate
-    // );
-
-    // ImGui::End();
-
-    ImGui::ShowDemoWindow(&_test);
-
-    ImGui::Render();
+    createPipeline(shaderCode);
 }
 
 ////////////////////////////////////////////////////////////
@@ -272,9 +208,9 @@ void VulkanContext::drawFrame()
     };
     auto presentResult = _queue.presentKHR(presentInfoKHR);
     if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR ||
-        _frameBufferResized)
+        _window->wasResized())
     {
-        _frameBufferResized = false;
+        _window->setResized(false);
         recreateSwapchain();
         return;
     }
@@ -297,45 +233,13 @@ void VulkanContext::waitIdle()
 
 void VulkanContext::recreateSwapchain()
 {
-    waitIdle();
+    _queue.waitIdle();
 
-    // manually clear to avoid vk::NativeWindowInUseKHRError
-    // vk::raii will automatically destruct these,
-    // but there will be 2 swapchains assigned to a single surface just before this
+    // explicitly clear to avoid vk::NativeWindowInUseKHRError
     _swapchain.clear();
     _swapImageViews.clear();
 
     createSwapchain();
-}
-
-////////////////////////////////////////////////////////////
-
-void VulkanContext::resizeFramebuffer(uint32_t width, uint32_t height)
-{
-    _frameBufferResized = true;
-}
-
-////////////////////////////////////////////////////////////
-
-void VulkanContext::addZoom(float zoom)
-{
-    _fp.zoom *= zoom;
-}
-
-////////////////////////////////////////////////////////////
-
-void VulkanContext::addOffset(float x, float y)
-{
-    _fp.offsetX += x * _fp.zoom;
-    _fp.offsetY += y * _fp.zoom;
-}
-
-////////////////////////////////////////////////////////////
-
-void VulkanContext::addIterations(float mult)
-{
-    _fp.maxIter *= mult;
-    _fp.maxIter = std::max(_fp.maxIter, 10);
 }
 
 ////////////////////////////////////////////////////////////
@@ -351,9 +255,7 @@ void VulkanContext::createInstance()
     // ===================== EXTENSIONS ===================== //
 
     // get required extensions for GLFW window
-    uint32_t            glfwExtensionsCount = 0;
-    const char**        glfwExtensions      = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
-    vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionsCount);
+    vector<const char*> extensions = _window->getRequiredExtensions();
     extensions.push_back("VK_EXT_debug_utils"); // add debug utils extension
     uint32_t extensionsCount = static_cast<uint32_t>(extensions.size());
 
@@ -428,14 +330,7 @@ void VulkanContext::createDebugCallback()
 
 void VulkanContext::createSurface()
 {
-    // GLFW cannot use raii
-    VkSurfaceKHR surface;
-    VkResult     res = glfwCreateWindowSurface(*_instance, _window, nullptr, &surface);
-    if (res != VK_SUCCESS)
-        FATAL("glfwCreateWindowSurface failed");
-
-    // convert to raii
-    _surface = vk::raii::SurfaceKHR(_instance, surface);
+    _surface = _window->createSurface(_instance);
 }
 
 ////////////////////////////////////////////////////////////
@@ -516,7 +411,7 @@ void VulkanContext::createLogicalDevice()
 
 ////////////////////////////////////////////////////////////
 
-void VulkanContext::createSwapchain()
+void VulkanContext::createSurfaceFormat()
 {
     // --- Obtain surface formats --- //
     vector<vk::SurfaceFormatKHR> formats = _physicalDevice.getSurfaceFormatsKHR(_surface);
@@ -530,23 +425,25 @@ void VulkanContext::createSwapchain()
     _surfaceFormat                          = itFormat != formats.end() ? *itFormat : formats[0];
 
     // --- Obtain surface capabilities --- //
-    vk::SurfaceCapabilitiesKHR caps = _physicalDevice.getSurfaceCapabilitiesKHR(_surface);
+    _caps = _physicalDevice.getSurfaceCapabilitiesKHR(_surface);
 
     // image count
-    uint32_t imageCount = std::max(caps.minImageCount + 1, caps.maxImageCount);
-    if (imageCount == 0)
+    _imageCount = std::max(_caps.minImageCount + 1, _caps.maxImageCount);
+    if (_imageCount == 0)
         FATAL("Vulkan surface does not support any images");
+}
 
+////////////////////////////////////////////////////////////
+
+void VulkanContext::createSwapchain()
+{
     // --- Set swapchain extent --- //
-    int width, height;
-    glfwGetFramebufferSize(_window, &width, &height);
-    _swapChainExtent.width  = width;
-    _swapChainExtent.height = height;
+    std::tie(_swapChainExtent.width, _swapChainExtent.height) = _window->getSize();
 
     // --- Create swapchain --- //
     vk::SwapchainCreateInfoKHR swapChainInfo{
         .surface               = *_surface,
-        .minImageCount         = imageCount,
+        .minImageCount         = _imageCount,
         .imageFormat           = _surfaceFormat.format,
         .imageColorSpace       = _surfaceFormat.colorSpace,
         .imageExtent           = _swapChainExtent,
@@ -555,7 +452,7 @@ void VulkanContext::createSwapchain()
         .imageSharingMode      = vk::SharingMode::eExclusive, // single queue family
         .queueFamilyIndexCount = 1,
         .pQueueFamilyIndices   = &_familyIndex,
-        .preTransform          = caps.currentTransform,
+        .preTransform          = _caps.currentTransform,
         .compositeAlpha        = vk::CompositeAlphaFlagBitsKHR::eOpaque,
         .presentMode           = vk::PresentModeKHR::eFifo, // vsync, always supported
         .clipped               = vk::True
@@ -567,7 +464,7 @@ void VulkanContext::createSwapchain()
     _swapImages = _swapchain.getImages();
 
     // --- Create image views --- //
-    _swapImageViews.reserve(imageCount);
+    _swapImageViews.reserve(_swapImages.size());
     for (const auto& image : _swapImages)
     {
         vk::ImageViewCreateInfo imageViewInfo{
@@ -590,20 +487,18 @@ void VulkanContext::createSwapchain()
 
 ////////////////////////////////////////////////////////////
 
-void VulkanContext::createPipeline()
+void VulkanContext::createPipeline(const vector<char>& shaderCode)
 {
-    const vector<char> code = readShader("shader.spv");
-
     vk::ShaderModuleCreateInfo shaderModuleInfo{
-        .codeSize = code.size() * sizeof(char), .pCode = reinterpret_cast<const uint32_t*>(code.data())
+        .codeSize = shaderCode.size() * sizeof(char), .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())
     };
-    _shader = vk::raii::ShaderModule(_device, shaderModuleInfo);
+    vk::raii::ShaderModule shader(_device, shaderModuleInfo);
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
-        .stage = vk::ShaderStageFlagBits::eVertex, .module = _shader, .pName = "vertMain"
+        .stage = vk::ShaderStageFlagBits::eVertex, .module = shader, .pName = "vertMain"
     };
     vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
-        .stage = vk::ShaderStageFlagBits::eFragment, .module = _shader, .pName = "fragMain"
+        .stage = vk::ShaderStageFlagBits::eFragment, .module = shader, .pName = "fragMain"
     };
     vk::PipelineShaderStageCreateInfo shaderStagesInfo[] = {vertShaderStageInfo, fragShaderStageInfo};
 
@@ -656,7 +551,7 @@ void VulkanContext::createPipeline()
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
         .setLayoutCount = 0, .pushConstantRangeCount = 1, .pPushConstantRanges = &pushConstantRange
     };
-    _pipelineLayout = vk::raii::PipelineLayout(_device, pipelineLayoutInfo);
+    vk::raii::PipelineLayout pipelineLayout(_device, pipelineLayoutInfo);
 
     vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
         {.stageCount          = 2,
@@ -668,7 +563,7 @@ void VulkanContext::createPipeline()
          .pMultisampleState   = &multisampleInfo,
          .pColorBlendState    = &colorBlendInfo,
          .pDynamicState       = &dynamicStateInfo,
-         .layout              = _pipelineLayout,
+         .layout              = pipelineLayout,
          .renderPass          = nullptr},
         {.colorAttachmentCount = 1, .pColorAttachmentFormats = &_surfaceFormat.format}
     };
@@ -799,7 +694,6 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
     commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swapChainExtent));
     commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
-    commandBuffer.pushConstants<FractalPushConstants>(*_pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, _fp);
     commandBuffer.drawIndexed(static_cast<uint32_t>(_indices.size()), 1, 0, 0, 0);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffer);
     commandBuffer.endRendering();
@@ -853,9 +747,6 @@ void VulkanContext::initImGUI()
         .pPoolSizes    = poolSizes
     };
     _descriptorPool = vk::raii::DescriptorPool(_device, pool_info);
-
-    ImGui::CreateContext();
-    ImGui_ImplGlfw_InitForVulkan(_window, true);
 
     vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo = {
         .colorAttachmentCount    = 1,                     //

@@ -19,4 +19,8 @@ set(IMGUI_SOURCES
     PARENT_SCOPE
 )
 
-set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} PARENT_SCOPE)
+set(IMGUI_INCLUDE
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+    PARENT_SCOPE
+)

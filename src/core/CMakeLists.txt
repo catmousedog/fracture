@@ -1,14 +1,19 @@
 set(TARGET core)
 
-file(GLOB_RECURSE SOURCES "*.cpp")
-
+file(GLOB SOURCES "*.cpp")
 add_library(${TARGET} STATIC 
     ${SOURCES}
 )
 
-target_link_libraries(${TARGET} 
-    vulkan
+add_dependencies(${TARGET} shaders)
+
+add_subdirectory(fractals)
+
+target_link_libraries(${TARGET} PRIVATE
+	fractals	
+	render
+	ui
+	window
 )
-target_include_directories(${TARGET} PRIVATE 
-    ../vulkan
-)
+
+LINK_SRC(${TARGET})
