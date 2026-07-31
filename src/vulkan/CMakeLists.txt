@@ -16,4 +16,6 @@ target_include_directories(${TARGET} PRIVATE
 	${IMGUI_INCLUDE}
 )
 
+target_compile_definitions(${TARGET} PRIVATE SHADER_DIR="${CMAKE_BINARY_DIR}/shaders/")
+
 LINK_SRC(${TARGET})

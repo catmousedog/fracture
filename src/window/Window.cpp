@@ -93,7 +93,7 @@ std::vector<const char*> Window::getRequiredExtensions()
     if (res != VK_SUCCESS)
         FATAL("glfwCreateWindowSurface failed");
 
-    // copy elision
+    // guaranteed copy elision
     return vk::raii::SurfaceKHR(instance, surface);
 }
 

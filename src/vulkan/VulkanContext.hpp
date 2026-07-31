@@ -16,28 +16,56 @@ class VulkanContext
     VulkanContext(Window* window);
 
     void logInfo();
-    void setShader(const vector<char>& shaderCode);
     void drawFrame();
     void waitIdle();
     void recreateSwapchain();
 
   private:
+    // Core
     void createInstance();
     void createDebugCallback();
     void createSurface();
     void pickPhysicalDevice();
     void createLogicalDevice();
+
+    // Swapchain
     void createSurfaceFormat();
     void createSwapchain();
-    void createPipeline(const vector<char>& shaderCode);
+
+    // Descriptor Layout
+    void createGraphicsDescriptorLayout();
+    void createComputeDescriptorLayout();
+
+    // Pipeline
+    void createGraphicsPipeline();
+    void createComputePipeline();
+
+    // Command buffers
     void createCommandPool();
-    void createVertexBuffer();
-    void createIndexBuffer();
     void createCommandBuffer();
     void recordCommandBuffer(uint32_t imageIndex);
+
+    // Compute Image
+    void createComputeImage();
+    void createSampler();
+
+    // Buffers
+    void createVertexBuffer();
+    void createIndexBuffer();
+
+    // Descriptors
+    void createDescriptorPool();
+    void createUiDescriptorPool();
+    void createGraphicsDescriptorSets();
+    void createComputeDescriptorSets();
+
+    // Sync objects
     void createSyncObjects();
+
+    // UI
     void initImGUI();
 
+    /* ================== Helper Functions ================== */
     void transition_image_layout(
         uint32_t                imageIndex,
         vk::ImageLayout         old_layout,
@@ -47,6 +75,12 @@ class VulkanContext
         vk::PipelineStageFlags2 src_stage_mask,
         vk::PipelineStageFlags2 dst_stage_mask
     );
+    void transitionImageLayout(
+        vk::raii::CommandBuffer& commandBuffer,
+        const vk::raii::Image&   image,
+        vk::ImageLayout          oldLayout,
+        vk::ImageLayout          newLayout
+    );
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
     createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
@@ -54,7 +88,7 @@ class VulkanContext
     void                    endSingleTimeCommands(vk::raii::CommandBuffer&& commandBuffer);
     PFN_vkVoidFunction      getFunctionEXT(const char* funcName);
 
-    // GLFW
+    // Window
     Window* _window = nullptr;
 
     // Core
@@ -67,9 +101,13 @@ class VulkanContext
     // Debug
     vk::raii::DebugUtilsMessengerEXT _debugMessenger = nullptr;
 
-    // Queues
-    uint32_t        _familyIndex = 0;
-    vk::raii::Queue _queue       = nullptr;
+    // Graphics queue
+    uint32_t        _graphicsFamilyIndex = 0;
+    vk::raii::Queue _graphicsQueue       = nullptr;
+
+    // Compute queue
+    uint32_t        _computeFamilyIndex = 0;
+    vk::raii::Queue _computeQueue       = nullptr;
 
     // Swapchain
     vk::raii::SwapchainKHR      _swapchain       = nullptr;
@@ -77,36 +115,53 @@ class VulkanContext
     vk::SurfaceFormatKHR        _surfaceFormat   = {};
     vector<vk::Image>           _swapImages      = {};
     vector<vk::raii::ImageView> _swapImageViews  = {};
-    vk::SurfaceCapabilitiesKHR  _caps            = {};
+    vk::SurfaceCapabilitiesKHR  _surfaceCaps     = {};
     uint32_t                    _imageCount      = 0;
 
-    // Framebuffers & commands
+    // Pipeline
+    vk::raii::PipelineLayout _graphicsPipelineLayout = nullptr;
+    vk::raii::PipelineLayout _computePipelineLayout  = nullptr;
+    vk::raii::Pipeline       _graphicsPipeline       = nullptr;
+    vk::raii::Pipeline       _computePipeline        = nullptr;
+
+    // Command buffers
     uint32_t                        _framesInFlight = 2;
     uint32_t                        _frameIndex     = 0;
     vk::raii::CommandPool           _commandPool    = nullptr;
     vector<vk::raii::CommandBuffer> _commandBuffers = {};
 
-    // pipeline
-    vk::raii::Pipeline _pipeline = nullptr;
+    // Compute image
+    vk::raii::Image        _computeImage       = nullptr;
+    vk::raii::DeviceMemory _computeImageMemory = nullptr;
+    vk::raii::ImageView    _computeImageView   = nullptr;
+    vk::raii::Sampler      _sampler            = nullptr;
+    bool                   _dirty              = true;
+
+    // Vertex buffer
+    std::vector<Vertex> _vertices = {
+        {{-1.f, -1.f}, {1.0f, 0.0f}},
+        {{1.f, -1.f}, {0.0f, 0.0f}},
+        {{1.f, 1.f}, {0.0f, 1.0f}},
+        {{-1.f, 1.f}, {1.0f, 1.0f}}
+    };
+    vk::raii::Buffer       _vertexBuffer       = nullptr;
+    vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
+
+    // Index buffer
+    vector<uint16_t>       _indices           = {0, 1, 2, 2, 3, 0};
+    vk::raii::Buffer       _indexBuffer       = nullptr;
+    vk::raii::DeviceMemory _indexBufferMemory = nullptr;
+
+    // Descriptors
+    vk::raii::DescriptorPool        _descriptorPool              = nullptr;
+    vk::raii::DescriptorPool        _uiDescriptorPool            = nullptr;
+    vk::raii::DescriptorSetLayout   _graphicsDescriptorSetLayout = nullptr;
+    vk::raii::DescriptorSetLayout   _computeDescriptorSetLayout  = nullptr;
+    vector<vk::raii::DescriptorSet> _graphicsDescriptorSets      = {};
+    vector<vk::raii::DescriptorSet> _computeDescriptorSets       = {};
 
     // Sync objects
     vector<vk::raii::Fence>     _drawFences                = {};
     vector<vk::raii::Semaphore> _renderFinishedSemaphores  = {};
     vector<vk::raii::Semaphore> _presentCompleteSemaphores = {};
-
-    // Vertex buffer
-    std::vector<Vertex> _vertices = {
-        {{-1.f, -1.f}}, //
-        {{1.f, -1.f}},  //
-        {{1.f, 1.f}},   //
-        {{-1.f, 1.f}}   //
-    };
-    vk::raii::Buffer       _vertexBuffer       = nullptr;
-    vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
-    vector<uint16_t>       _indices            = {0, 1, 2, 2, 3, 0};
-    vk::raii::Buffer       _indexBuffer        = nullptr;
-    vk::raii::DeviceMemory _indexBufferMemory  = nullptr;
-
-    // ImGUI
-    vk::raii::DescriptorPool _descriptorPool = nullptr;
 };

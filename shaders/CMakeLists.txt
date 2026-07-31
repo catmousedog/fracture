@@ -3,8 +3,11 @@ find_program(SLANGC_EXECUTABLE slangc REQUIRED)
 file(GLOB SHADER_SOURCES *.slang)
 
 set(SHADER_SOURCES
-    mandelbrot.slang
+    shader.slang
 )
+
+# Wipe all compiled shaders
+# file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/shaders)
 
 foreach(SHADER ${SHADER_SOURCES})
     get_filename_component(SHADER_NAME ${SHADER} NAME_WE)

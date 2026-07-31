@@ -12,7 +12,6 @@ Renderer::Renderer(const Fractal* fractal, Window* window)
       _window(window),
       _vulkanContext(std::make_unique<VulkanContext>(_window))
 {
-    _vulkanContext->setShader(_fractal->readShader());
     _vulkanContext->logInfo();
 }
 
