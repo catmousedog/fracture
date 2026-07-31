@@ -1,17 +1,19 @@
 find_program(SLANGC_EXECUTABLE slangc REQUIRED)
 
-file(GLOB SHADER_SOURCES *.slang)
-
 set(SHADER_SOURCES
-    shader.slang
+    graphics.slang
+    compute.slang
 )
-
-# Wipe all compiled shaders
-# file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/shaders)
 
 foreach(SHADER ${SHADER_SOURCES})
     get_filename_component(SHADER_NAME ${SHADER} NAME_WE)
     set(OUT ${CMAKE_BINARY_DIR}/shaders/${SHADER_NAME}.spv)
+
+    if(SHADER_NAME STREQUAL "graphics")
+        set(ENTRY_POINTS -entry vertMain -entry fragMain)
+    elseif(SHADER_NAME STREQUAL "compute")
+        set(ENTRY_POINTS -entry compMain)
+    endif()
 
     add_custom_command(
         OUTPUT ${OUT}
@@ -19,7 +21,7 @@ foreach(SHADER ${SHADER_SOURCES})
         COMMAND ${SLANGC_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER}
                 -target spirv -profile spirv_1_4 -emit-spirv-directly
                 -fvk-use-entrypoint-name
-                -entry vertMain -entry fragMain # hard coded for now
+                ${ENTRY_POINTS}
                 -o ${OUT}
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER}
         COMMENT "Compiling ${SHADER}"

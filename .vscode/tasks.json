@@ -2,6 +2,21 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "clean shaders",
+			"type": "shell",
+			"command": "rm ${workspaceFolder}/build/release/shaders/*.spv ${workspaceFolder}/build/debug/shaders/*.spv",
+			"presentation": {
+				"echo": false,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true,
+				"close": false
+			},
+			"group": "none"
+		},
+		{
 			"label": "cmake",
 			"type": "shell",
 			"command": "cmake",

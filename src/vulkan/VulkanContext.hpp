@@ -17,7 +17,6 @@ class VulkanContext
 
     void logInfo();
     void drawFrame();
-    void waitIdle();
     void recreateSwapchain();
 
   private:
@@ -67,7 +66,7 @@ class VulkanContext
 
     /* ================== Helper Functions ================== */
     void transition_image_layout(
-        uint32_t                imageIndex,
+        const vk::Image&        image,
         vk::ImageLayout         old_layout,
         vk::ImageLayout         new_layout,
         vk::AccessFlags2        src_access_mask,
@@ -83,10 +82,10 @@ class VulkanContext
     );
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
-    createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
-    vk::raii::CommandBuffer beginSingleTimeCommands();
-    void                    endSingleTimeCommands(vk::raii::CommandBuffer&& commandBuffer);
-    PFN_vkVoidFunction      getFunctionEXT(const char* funcName);
+         createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+    void singleCommand(std::function<void(vk::raii::CommandBuffer&)> command);
+    vk::raii::ShaderModule readShader(string fileName) const;
+    PFN_vkVoidFunction     getFunctionEXT(const char* funcName);
 
     // Window
     Window* _window = nullptr;
@@ -101,13 +100,9 @@ class VulkanContext
     // Debug
     vk::raii::DebugUtilsMessengerEXT _debugMessenger = nullptr;
 
-    // Graphics queue
-    uint32_t        _graphicsFamilyIndex = 0;
-    vk::raii::Queue _graphicsQueue       = nullptr;
-
-    // Compute queue
-    uint32_t        _computeFamilyIndex = 0;
-    vk::raii::Queue _computeQueue       = nullptr;
+    // Queue
+    uint32_t        _familyIndex = 0;
+    vk::raii::Queue _queue       = nullptr;
 
     // Swapchain
     vk::raii::SwapchainKHR      _swapchain       = nullptr;
@@ -153,12 +148,12 @@ class VulkanContext
     vk::raii::DeviceMemory _indexBufferMemory = nullptr;
 
     // Descriptors
-    vk::raii::DescriptorPool        _descriptorPool              = nullptr;
-    vk::raii::DescriptorPool        _uiDescriptorPool            = nullptr;
-    vk::raii::DescriptorSetLayout   _graphicsDescriptorSetLayout = nullptr;
-    vk::raii::DescriptorSetLayout   _computeDescriptorSetLayout  = nullptr;
-    vector<vk::raii::DescriptorSet> _graphicsDescriptorSets      = {};
-    vector<vk::raii::DescriptorSet> _computeDescriptorSets       = {};
+    vk::raii::DescriptorPool      _descriptorPool              = nullptr;
+    vk::raii::DescriptorPool      _uiDescriptorPool            = nullptr;
+    vk::raii::DescriptorSetLayout _graphicsDescriptorSetLayout = nullptr;
+    vk::raii::DescriptorSetLayout _computeDescriptorSetLayout  = nullptr;
+    vk::raii::DescriptorSet       _graphicsDescriptorSet       = nullptr;
+    vk::raii::DescriptorSet       _computeDescriptorSet        = nullptr;
 
     // Sync objects
     vector<vk::raii::Fence>     _drawFences                = {};
