@@ -55,8 +55,10 @@ class VulkanContext
     // Descriptors
     void createDescriptorPool();
     void createUiDescriptorPool();
-    void createGraphicsDescriptorSets();
-    void createComputeDescriptorSets();
+    void createGraphicsDescriptorSet();
+    void updateGraphicsDescriptorSet();
+    void createComputeDescriptorSet();
+    void updateComputeDescriptorSet();
 
     // Sync objects
     void createSyncObjects();
@@ -64,7 +66,7 @@ class VulkanContext
     // UI
     void initImGUI();
 
-    /* ================== Helper Functions ================== */
+    /* ================== HELPER FUNCTIONS ================== */
     void transition_image_layout(
         const vk::Image&        image,
         vk::ImageLayout         old_layout,
@@ -134,10 +136,10 @@ class VulkanContext
 
     // Vertex buffer
     std::vector<Vertex> _vertices = {
-        {{-1.f, -1.f}, {1.0f, 0.0f}},
-        {{1.f, -1.f}, {0.0f, 0.0f}},
-        {{1.f, 1.f}, {0.0f, 1.0f}},
-        {{-1.f, 1.f}, {1.0f, 1.0f}}
+        {{-1.f, -1.f}, {0.0f, 1.0f}},
+        {{1.f, -1.f}, {1.0f, 1.0f}},
+        {{1.f, 1.f}, {1.0f, 0.0f}},
+        {{-1.f, 1.f}, {0.0f, 0.0f}}
     };
     vk::raii::Buffer       _vertexBuffer       = nullptr;
     vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
@@ -154,6 +156,14 @@ class VulkanContext
     vk::raii::DescriptorSetLayout _computeDescriptorSetLayout  = nullptr;
     vk::raii::DescriptorSet       _graphicsDescriptorSet       = nullptr;
     vk::raii::DescriptorSet       _computeDescriptorSet        = nullptr;
+
+    // Push Constants
+    FractalPushConstants _pushConstants = {
+        .offsetX = 0.0f, //
+        .offsetY = 0.0f, //
+        .zoom    = 1.0f, //
+        .maxIter = 100   //
+    };
 
     // Sync objects
     vector<vk::raii::Fence>     _drawFences                = {};

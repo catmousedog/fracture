@@ -96,8 +96,8 @@ VulkanContext::VulkanContext(Window* window)
     // Descriptors
     createDescriptorPool();
     createUiDescriptorPool();
-    createGraphicsDescriptorSets();
-    createComputeDescriptorSets();
+    createGraphicsDescriptorSet();
+    createComputeDescriptorSet();
 
     // Sync objects
     createSyncObjects();
@@ -135,6 +135,10 @@ void VulkanContext::logInfo()
         Log::info_t(2, "LIMITS:");
         Log::info_t(3, "maxSamplerAnisotropy: {}", limits.maxSamplerAnisotropy);
         Log::info_t(3, "maxPushConstantsSize: {}", limits.maxPushConstantsSize);
+        Log::info_t(3, "maxComputeSharedMemorySize: {} KiB", limits.maxComputeSharedMemorySize / 1024);
+        Log::info_t(3, "maxComputeWorkGroupSize: {}", limits.maxComputeWorkGroupSize);
+        Log::info_t(3, "maxComputeWorkGroupInvocations: {}", limits.maxComputeWorkGroupInvocations);
+        Log::info_t(3, "maxComputeWorkGroupCount: {}", limits.maxComputeWorkGroupCount);
 
         // --- Queue Families ---
         auto queueFamilies = physicalDevice.getQueueFamilyProperties();
@@ -239,6 +243,7 @@ void VulkanContext::drawFrame()
     if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR ||
         _window->wasResized())
     {
+        _dirty = true;
         _window->setResized(false);
         recreateSwapchain();
         return;
@@ -259,8 +264,17 @@ void VulkanContext::recreateSwapchain()
     // explicitly clear to avoid vk::NativeWindowInUseKHRError
     _swapchain.clear();
     _swapImageViews.clear();
-
     createSwapchain();
+
+    // recreate compute image
+    _computeImage.clear();
+    _computeImageMemory.clear();
+    _computeImageView.clear();
+    createComputeImage();
+
+    // update descriptor sets
+    updateGraphicsDescriptorSet();
+    updateComputeDescriptorSet();
 }
 
 ////////////////////////////////////////////////////////////
@@ -590,7 +604,14 @@ void VulkanContext::createComputeImage()
     /* ================== TRANSITION IMAGE ================== */
     singleCommand(
         [this](vk::raii::CommandBuffer& commandBuffer)
-        { transitionImageLayout(commandBuffer, _computeImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral); }
+        {
+            transitionImageLayout(
+                commandBuffer,
+                _computeImage,
+                vk::ImageLayout::eUndefined,
+                vk::ImageLayout::eShaderReadOnlyOptimal // will switch back to General in recordCommandBuffer
+            );
+        }
     );
 }
 
@@ -772,6 +793,17 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
     // --- Recompute --- //
     if (_dirty)
     {
+        // --- Transition to General --- //
+        transition_image_layout(
+            *_computeImage,
+            vk::ImageLayout::eShaderReadOnlyOptimal,
+            vk::ImageLayout::eGeneral,
+            vk::AccessFlagBits2::eShaderRead,
+            vk::AccessFlagBits2::eShaderWrite,
+            vk::PipelineStageFlagBits2::eFragmentShader,
+            vk::PipelineStageFlagBits2::eComputeShader
+        );
+
         // --- Bind Descriptor Set --- //
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_computePipeline);
         commandBuffer.bindDescriptorSets(
@@ -779,8 +811,9 @@ void VulkanContext::recordCommandBuffer(uint32_t imageIndex)
         );
 
         // --- Push Constants --- //
-        // commandBuffer.pushConstants(_computePipelineLayout, vk::ShaderStageFlagBits::eCompute, 0,
-        // sizeof(FractalPushConstants), ....
+        commandBuffer.pushConstants(
+            _computePipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(FractalPushConstants), &_pushConstants
+        );
 
         // --- Execute --- //
         uint32_t groupX = (_swapChainExtent.width + 15) / 16;
@@ -967,7 +1000,7 @@ void VulkanContext::createUiDescriptorPool()
 
 ////////////////////////////////////////////////////////////
 
-void VulkanContext::createGraphicsDescriptorSets()
+void VulkanContext::createGraphicsDescriptorSet()
 {
     // --- Allocate Descriptor --- //
     vk::DescriptorSetAllocateInfo allocInfo{
@@ -978,6 +1011,13 @@ void VulkanContext::createGraphicsDescriptorSets()
     _graphicsDescriptorSet = std::move(_device.allocateDescriptorSets(allocInfo).front());
 
     // --- Update Allocated Descriptor --- //
+    updateGraphicsDescriptorSet();
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::updateGraphicsDescriptorSet()
+{
     vk::DescriptorImageInfo imageInfo{
         .sampler     = _sampler,                               //
         .imageView   = _computeImageView,                      //
@@ -996,7 +1036,7 @@ void VulkanContext::createGraphicsDescriptorSets()
 
 ////////////////////////////////////////////////////////////
 
-void VulkanContext::createComputeDescriptorSets()
+void VulkanContext::createComputeDescriptorSet()
 {
     // --- Allocate Descriptor --- //
     vk::DescriptorSetAllocateInfo allocInfo{
@@ -1007,6 +1047,13 @@ void VulkanContext::createComputeDescriptorSets()
     _computeDescriptorSet = std::move(_device.allocateDescriptorSets(allocInfo).front());
 
     // --- Update Allocated Descriptor --- //
+    updateComputeDescriptorSet();
+}
+
+////////////////////////////////////////////////////////////
+
+void VulkanContext::updateComputeDescriptorSet()
+{
     vk::DescriptorImageInfo imageInfo{
         .imageView   = _computeImageView,        //
         .imageLayout = vk::ImageLayout::eGeneral //
@@ -1139,6 +1186,16 @@ void VulkanContext::transitionImageLayout(
     {
         barrier.srcAccessMask = {};
         barrier.dstAccessMask = vk::AccessFlagBits::eShaderWrite;
+
+        sourceStage      = vk::PipelineStageFlagBits::eTopOfPipe;
+        destinationStage = vk::PipelineStageFlagBits::eComputeShader;
+    }
+
+    // Undefined -> ShaderReadOnlyOptimal (startup)
+    else if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+    {
+        barrier.srcAccessMask = {};
+        barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
         sourceStage      = vk::PipelineStageFlagBits::eTopOfPipe;
         destinationStage = vk::PipelineStageFlagBits::eComputeShader;

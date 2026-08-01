@@ -27,7 +27,7 @@ struct Vertex
 
 struct FractalPushConstants
 {
-    float offsetX, offsetY;
-    float zoom;
-    int   maxIter;
+    float offsetX = 0.0f, offsetY = 0.0f;
+    float zoom    = 1.0f;
+    int   maxIter = 100;
 };
