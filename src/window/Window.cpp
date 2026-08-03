@@ -108,7 +108,7 @@ std::pair<uint32_t, uint32_t> Window::getSize()
 
 ////////////////////////////////////////////////////////////
 
-GLFWwindow* Window::getWindow()
+GLFWwindow* Window::getGLFWWindow()
 {
     return _glfwWindow;
 }

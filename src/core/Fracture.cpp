@@ -5,8 +5,8 @@
 
 Fracture::Fracture()
     : _fractal(std::make_unique<Mandelbrot>()),
-      _ui(&_window),
-      _renderer(_fractal.get(), &_window)
+      _renderer(&_window, _fractal.get())
+
 {
 }
 
@@ -18,7 +18,6 @@ void Fracture::mainLoop()
     {
         _window.pollEvents();
 
-        _ui.draw();
         _renderer.draw();
     }
 }

@@ -12,7 +12,6 @@ add_subdirectory(fractals)
 target_link_libraries(${TARGET} PRIVATE
 	fractals	
 	render
-	ui
 	window
 )
 

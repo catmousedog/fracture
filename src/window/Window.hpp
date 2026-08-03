@@ -32,7 +32,7 @@ class Window
 
     std::pair<uint32_t, uint32_t> getSize();
 
-    class GLFWwindow* getWindow();
+    class GLFWwindow* getGLFWWindow();
 
   private:
     class GLFWwindow* _glfwWindow = nullptr;
