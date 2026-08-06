@@ -22,7 +22,7 @@ Renderer::Renderer(Window* window, const Fractal* fractal)
       _commandQueue(_vulkanCore, FRAMES_IN_FLIGHT),
       _vertexBuffer(_vulkanCore, _commandQueue),
       _vulkanImage(_vulkanCore, _commandQueue),
-      _computePipeline(_vulkanCore, _vulkanImage, _fractal->getPushConstants()),
+      _computePipeline(_vulkanCore, _vulkanImage, _fractal->getSettings()),
       _graphicsPipeline(_vulkanCore, _vulkanImage),
       _ui(&_vulkanCore, FRAMES_IN_FLIGHT)
 {
@@ -89,6 +89,7 @@ void Renderer::record(uint32_t imageIndex)
             }
         );
 
+        // --- Bind Pipeline --- //
         _computePipeline.bind(_commandQueue);
 
         // --- Execute --- //
@@ -114,18 +115,14 @@ void Renderer::record(uint32_t imageIndex)
     }
 
     // --- Prepare and Begin Rendering --- //
-    _vulkanCore.prepare(&_commandQueue, imageIndex);
+    _vulkanCore.prepare(&_commandQueue, imageIndex); // Layout is ColorAttachmentOptimal
 
-    // --- Bind Pipeline and Descriptors --- //
+    // --- Bind Pipeline --- //
     _graphicsPipeline.bind(_commandQueue);
 
-    // Bind
-    _vertexBuffer.bind(_commandQueue);
-
-    // Draw
+    // --- Draw --- //
     _vertexBuffer.draw(_commandQueue);
-    // UI
-    _ui.record(_commandQueue);
+    _ui.draw(_commandQueue);
 
     // --- End Rendering --- //
     _commandQueue.endRendering();

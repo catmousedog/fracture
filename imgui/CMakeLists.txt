@@ -8,7 +8,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-set(IMGUI_SOURCES
+add_library(imgui STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
@@ -16,11 +16,11 @@ set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
-    PARENT_SCOPE
 )
 
-set(IMGUI_INCLUDE
+target_include_directories(imgui PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
-    PARENT_SCOPE
 )
+
+target_link_libraries(imgui PUBLIC glfw Vulkan::Vulkan)

@@ -1,7 +1,7 @@
 struct FractalPushConstants {
     float2 center;   // point in complex plane the view is centered on
     float zoom;      // scale factor
-    int maxIterations;
+    float maxIterations;
 };
 
 [[vk::push_constant]]
@@ -18,14 +18,14 @@ void compMain(uint3 id : SV_DispatchThreadID)
     outputImage.GetDimensions(width, height);
     if (id.x >= width || id.y >= height) return;
 
-    // 1. normalize pixel to [-1, 1] range, correcting for aspect ratio
+    // normalize pixel to [-1, 1] range, correcting for aspect ratio
     float2 uv = (float2(id.xy) / float2(width, height)) * 2.0 - 1.0;
     uv.x *= float(width) / float(height);
 
-    // 2. map to complex plane using zoom + center offset
+    // map to complex plane using zoom + center offset
     float2 c = pc.center + uv * pc.zoom;
 
-    // 3. Mandelbrot iteration
+    // Mandelbrot loop
     float2 z = float2(0.0, 0.0);
     int i;
     for (i = 0; i < pc.maxIterations; i++)

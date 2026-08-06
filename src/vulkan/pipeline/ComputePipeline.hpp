@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/PushConstants.hpp"
+#include "core/fractals/Fractal.hpp"
 #include "vulkan/VulkanImage.hpp"
 #include "vulkan/pipeline/Pipeline.hpp"
 
@@ -8,7 +8,7 @@ class ComputePipeline : public Pipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const PushConstants& pushConstants);
+    ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const Fractal::Settings& fractalSettings);
 
   private:
     void createDescriptorSet();
@@ -23,6 +23,6 @@ class ComputePipeline : public Pipeline
 
     /* ====================== VARIABLES ===================== */
   private:
-    VulkanImage&         _image;
-    const PushConstants& _pushConstants;
+    VulkanImage&             _image;
+    const Fractal::Settings& _fractalSettings;
 };

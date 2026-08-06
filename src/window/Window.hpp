@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/fractals/Fractal.hpp"
+
 #include <cstdint>
 #include <utility>
 #include <vector>
@@ -14,28 +16,43 @@ class Instance;
 
 class Window
 {
-
+    /* ======================== SETUP ======================= */
   public:
-    Window();
+    Window(Fractal::Settings* settings);
 
     virtual ~Window();
 
+    /* ==================== CAPABILITIES ==================== */
     bool shouldClose();
-    void pollEvents();
 
-    void setResized(bool resized);
-    bool wasResized() const;
+    void pollEvents();
 
     std::vector<const char*> getRequiredExtensions();
 
-    [[nodiscard]] vk::raii::SurfaceKHR createSurface(vk::raii::Instance& instance);
+    vk::raii::SurfaceKHR createSurface(vk::raii::Instance& instance);
+
+    /* ================= GETTERS AND SETTERS ================ */
 
     std::pair<uint32_t, uint32_t> getSize();
 
-    class GLFWwindow* getGLFWWindow();
+    class GLFWwindow* getGLFWWindow()
+    {
+        return _glfwWindow;
+    }
 
+    Fractal::Settings* getSettings()
+    {
+        return _settings;
+    }
+
+    /* ====================== VARIABLES ===================== */
   private:
-    class GLFWwindow* _glfwWindow = nullptr;
+    class GLFWwindow*  _glfwWindow = nullptr;
+    Fractal::Settings* _settings   = nullptr;
 
-    bool _resized = false;
+  public:
+    bool   dirty    = false;         // recompute flag
+    bool   dragging = false;         // mouse dragging flag
+    bool   ctrl     = false;         // ctrl key held
+    double lastX = 0.0, lastY = 0.0; // previous mouse position
 };

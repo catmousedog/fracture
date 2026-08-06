@@ -7,6 +7,7 @@ add_library(${TARGET}
 
 target_link_libraries(${TARGET} PRIVATE
 	glfw
+	imgui
 )
 
 LINK_SRC(${TARGET})

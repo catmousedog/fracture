@@ -83,20 +83,12 @@ void VertexBuffer::createIndexBuffer()
 
 ////////////////////////////////////////////////////////////
 
-void VertexBuffer::bind(CommandQueue& commandQueue)
+void VertexBuffer::draw(CommandQueue& commandQueue)
 {
     auto& commandBuffer = commandQueue.getCommandBuffer();
 
     commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
-}
-
-////////////////////////////////////////////////////////////
-
-void VertexBuffer::draw(CommandQueue& commandQueue)
-{
-    auto& commandBuffer = commandQueue.getCommandBuffer();
-
     commandBuffer.drawIndexed(static_cast<uint32_t>(_indices.size()), 1, 0, 0, 0);
 }
 

@@ -9,17 +9,3 @@ Mandelbrot::Mandelbrot() { }
 Mandelbrot::~Mandelbrot() { }
 
 ////////////////////////////////////////////////////////////
-
-const PushConstants& Mandelbrot::getPushConstants() const
-{
-    return _pushConstants;
-}
-
-////////////////////////////////////////////////////////////
-
-constexpr string Mandelbrot::shaderFileName() const
-{
-    return "mandelbrot";
-}
-
-////////////////////////////////////////////////////////////

@@ -72,16 +72,33 @@ UI::~UI()
 
 ////////////////////////////////////////////////////////////
 
-void UI::record(CommandQueue& commandQueue)
+void UI::draw(CommandQueue& commandQueue)
 {
+    auto [width, height] = _vulkanCore->getWindow()->getSize();
+
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow();
+    ImGui::SetNextWindowPos(ImVec2(width - _uiWidth, 0));
+    ImGui::SetNextWindowSize(ImVec2(_uiWidth, height), ImGuiCond_Once);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(50, height), ImVec2(FLT_MAX, height));
+    ImGui::Begin(
+        "Controls", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
+    );
+    _uiWidth = ImGui::GetWindowWidth();
+
+    ImGui::Text("Fractal Settings");
+    ImGui::Separator();
+
+    // your widgets go here, in order, e.g.:
+    // ImGui::SliderFloat("Zoom", &zoom, 0.1f, 10.0f);
+    // ImGui::InputFloat2("Center", &centerX);
+    // ImGui::Combo("Fractal Type", &fractalIndex, items, itemCount);
+
+    ImGui::End();
 
     ImGui::Render();
-
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandQueue.getCommandBuffer());
 }
 

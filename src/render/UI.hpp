@@ -17,7 +17,7 @@ class UI final
 
     /* ==================== CAPABILITIES ==================== */
   public:
-    void record(CommandQueue& commandQueue);
+    void draw(CommandQueue& commandQueue);
 
     /* ====================== VARIABLES ===================== */
   private:
@@ -25,4 +25,6 @@ class UI final
     uint32_t          _framesInFlight = 0;
 
     vk::raii::DescriptorPool _descriptorPool = nullptr;
+
+    float _uiWidth = 200.0f;
 };

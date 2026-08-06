@@ -44,8 +44,6 @@ class VertexBuffer
 
     /* ==================== CAPABILITIES ==================== */
   public:
-    void bind(CommandQueue& commandQueue);
-
     void draw(CommandQueue& commandQueue);
 
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>

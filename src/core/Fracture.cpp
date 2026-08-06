@@ -5,6 +5,7 @@
 
 Fracture::Fracture()
     : _fractal(std::make_unique<Mandelbrot>()),
+      _window(&_fractal->getSettings()),
       _renderer(&_window, _fractal.get())
 
 {

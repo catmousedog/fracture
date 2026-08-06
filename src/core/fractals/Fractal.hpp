@@ -1,22 +1,34 @@
 #pragma once
 
-#include "util/Basics.hpp"
-#include "vulkan/PushConstants.hpp"
-
 class Fractal
 {
+    /* ==================== NESTED CLASS ==================== */
+  public:
+    struct Settings
+    {
+        float offsetX = 0.0f, offsetY = 0.0f;
+        float zoom    = 1.0f;
+        float maxIter = 100;
+    };
 
     /* ======================== SETUP ======================= */
-  public:
+
     Fractal();
 
     virtual ~Fractal();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================= GETTERS AND SETTERS ================ */
 
-    virtual const PushConstants& getPushConstants() const = 0;
+    const Settings& getSettings() const
+    {
+        return _settings;
+    }
+    Settings& getSettings()
+    {
+        return _settings;
+    }
 
-    virtual constexpr string shaderFileName() const = 0;
+    /* ====================== VARIABLES ===================== */
 
-    virtual vector<char> readShader() const;
+    Settings _settings;
 };

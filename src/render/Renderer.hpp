@@ -22,6 +22,8 @@ class Renderer
     /* ==================== CAPABILITIES ==================== */
     void draw();
 
+    /* ================== HELPER FUNCTIONS ================== */
+  private:
     void record(uint32_t imageIndex);
 
     void resize();

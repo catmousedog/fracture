@@ -2,10 +2,10 @@
 
 ////////////////////////////////////////////////////////////
 
-ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const PushConstants& pushConstants)
+ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const Fractal::Settings& fractalSettings)
     : Pipeline(vulkanCore, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute),
       _image(image),
-      _pushConstants(pushConstants)
+      _fractalSettings(fractalSettings)
 {
     createDescriptorSet();
     createPipeline();
@@ -39,7 +39,7 @@ void ComputePipeline::createPipeline()
 
     // --- Push Constants --- //
     vk::PushConstantRange pushConstantRange{
-        .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = sizeof(PushConstants)
+        .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = sizeof(_fractalSettings)
     };
 
     /* =================== CREATE PIPELINE ================== */
@@ -89,7 +89,7 @@ void ComputePipeline::bind(CommandQueue& commandQueue)
 
     // --- Push Constants --- //
     commandBuffer.pushConstants(
-        _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(PushConstants), &_pushConstants
+        _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(_fractalSettings), &_fractalSettings
     );
 }
 
