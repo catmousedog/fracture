@@ -11,6 +11,10 @@ class ComputePipeline : public Pipeline
     ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const Fractal::Settings& fractalSettings);
 
   private:
+    void createDescriptorPool();
+
+    void createDescriptorLayout();
+
     void createDescriptorSet();
 
     void createPipeline();

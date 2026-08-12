@@ -4,11 +4,48 @@
 ////////////////////////////////////////////////////////////
 
 GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image)
-    : Pipeline(vulkanCore, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment),
+    : Pipeline(vulkanCore),
       _image(image)
 {
+    createDescriptorPool();
+    createDescriptorLayout();
     createDescriptorSet();
     createPipeline();
+}
+
+////////////////////////////////////////////////////////////
+
+void GraphicsPipeline::createDescriptorPool()
+{
+    vk::DescriptorPoolSize poolSize{
+        .type            = vk::DescriptorType::eCombinedImageSampler, //
+        .descriptorCount = 1                                          //
+    };
+
+    vk::DescriptorPoolCreateInfo poolInfo{
+        .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets       = poolSize.descriptorCount,
+        .poolSizeCount = 1,
+        .pPoolSizes    = &poolSize
+    };
+    _descriptorPool = _vulkanCore.getDevice().createDescriptorPool(poolInfo);
+}
+
+////////////////////////////////////////////////////////////
+
+void GraphicsPipeline::createDescriptorLayout()
+{
+    vk::DescriptorSetLayoutBinding bindings{
+        .binding         = 0,
+        .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+        .descriptorCount = 1,
+        .stageFlags      = vk::ShaderStageFlagBits::eFragment
+    };
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{
+        .bindingCount = 1,        //
+        .pBindings    = &bindings //
+    };
+    _descriptorSetLayout = vk::raii::DescriptorSetLayout(_vulkanCore.getDevice(), layoutInfo);
 }
 
 ////////////////////////////////////////////////////////////

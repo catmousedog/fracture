@@ -10,6 +10,10 @@ class GraphicsPipeline : public Pipeline
     GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image);
 
   private:
+    void createDescriptorPool();
+
+    void createDescriptorLayout();
+
     void createDescriptorSet();
 
     void createPipeline();

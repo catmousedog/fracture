@@ -26,5 +26,6 @@ class UI final
 
     vk::raii::DescriptorPool _descriptorPool = nullptr;
 
-    float _uiWidth = 200.0f;
+    float _uiWidth   = 200.0f;
+    bool  _collapsed = false;
 };

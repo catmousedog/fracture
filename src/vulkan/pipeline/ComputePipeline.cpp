@@ -3,12 +3,54 @@
 ////////////////////////////////////////////////////////////
 
 ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const Fractal::Settings& fractalSettings)
-    : Pipeline(vulkanCore, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute),
+    : Pipeline(vulkanCore),
       _image(image),
       _fractalSettings(fractalSettings)
 {
+    createDescriptorPool();
+    createDescriptorLayout();
     createDescriptorSet();
     createPipeline();
+}
+
+////////////////////////////////////////////////////////////
+
+void ComputePipeline::createDescriptorPool()
+{
+    std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
+        {vk::DescriptorType::eStorageImage, 1}, //
+        {vk::DescriptorType::eStorageBuffer, 1} //
+    }};
+
+    vk::DescriptorPoolCreateInfo poolInfo{
+        .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets       = 2,
+        .poolSizeCount = poolSizes.size(),
+        .pPoolSizes    = poolSizes.data()
+    };
+    _descriptorPool = _vulkanCore.getDevice().createDescriptorPool(poolInfo);
+}
+
+////////////////////////////////////////////////////////////
+
+void ComputePipeline::createDescriptorLayout()
+{
+    std::array<vk::DescriptorSetLayoutBinding, 2> bindings{
+        {{.binding         = 0,
+          .descriptorType  = vk::DescriptorType::eStorageImage,
+          .descriptorCount = 1,
+          .stageFlags      = vk::ShaderStageFlagBits::eCompute},
+         {.binding         = 1,
+          .descriptorType  = vk::DescriptorType::eStorageBuffer,
+          .descriptorCount = 1,
+          .stageFlags      = vk::ShaderStageFlagBits::eCompute}}
+    };
+
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{
+        .bindingCount = bindings.size(), //
+        .pBindings    = bindings.data()  //
+    };
+    _descriptorSetLayout = vk::raii::DescriptorSetLayout(_vulkanCore.getDevice(), layoutInfo);
 }
 
 ////////////////////////////////////////////////////////////

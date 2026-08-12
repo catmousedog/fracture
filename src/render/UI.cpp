@@ -8,6 +8,15 @@
 
 ////////////////////////////////////////////////////////////
 
+namespace
+{
+
+constexpr float collapseButtonSize = 32.0f;
+
+} // namespace
+
+////////////////////////////////////////////////////////////
+
 UI::UI(VulkanCore* vulkanCore, uint32_t framesInFlight)
     : _vulkanCore(vulkanCore),
       _framesInFlight(framesInFlight)
@@ -80,23 +89,63 @@ void UI::draw(CommandQueue& commandQueue)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowPos(ImVec2(width - _uiWidth, 0));
-    ImGui::SetNextWindowSize(ImVec2(_uiWidth, height), ImGuiCond_Once);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(50, height), ImVec2(FLT_MAX, height));
-    ImGui::Begin(
-        "Controls", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
-    );
-    _uiWidth = ImGui::GetWindowWidth();
+    if (_collapsed)
+    {
+        ImVec2 mousePos      = ImGui::GetMousePos();
+        bool   mouseNearEdge = mousePos.x >= width - collapseButtonSize && //
+                               mousePos.x <= width &&                      //
+                               mousePos.y >= 0 &&                          //
+                               mousePos.y <= height;                       //
+        if (mouseNearEdge)
+        {
+            ImGui::SetNextWindowPos(ImVec2(width - collapseButtonSize, (height - collapseButtonSize) / 2.f));
+            ImGui::SetNextWindowSize(ImVec2(collapseButtonSize, collapseButtonSize));
+            ImGui::Begin(
+                "##ExpandArrow",
+                nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground
+            );
 
-    ImGui::Text("Fractal Settings");
-    ImGui::Separator();
+            if (ImGui::ArrowButton("##id", ImGuiDir_Left))
+                _collapsed = false;
 
-    // your widgets go here, in order, e.g.:
-    // ImGui::SliderFloat("Zoom", &zoom, 0.1f, 10.0f);
-    // ImGui::InputFloat2("Center", &centerX);
-    // ImGui::Combo("Fractal Type", &fractalIndex, items, itemCount);
+            ImGui::End();
+        }
+    }
+    else
+    {
+        ImGui::SetNextWindowPos(ImVec2(width - _uiWidth, 0));
+        ImGui::SetNextWindowSize(ImVec2(_uiWidth, height), ImGuiCond_Once);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(50, height), ImVec2(FLT_MAX, height));
+        ImGui::Begin(
+            "Controls", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
+        );
+        _uiWidth = ImGui::GetWindowWidth();
 
-    ImGui::End();
+        ImGui::Text("Fractal Settings");
+        ImGui::Separator();
+
+        // your widgets go here, in order
+
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(
+            ImVec2(width - _uiWidth - collapseButtonSize, height * 0.5f - collapseButtonSize * 0.5f)
+        );
+        ImGui::SetNextWindowSize(ImVec2(collapseButtonSize, collapseButtonSize));
+        ImGui::Begin(
+            "##CollapseArrow",
+            nullptr,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground
+        );
+
+        if (ImGui::ArrowButton("##collapse", ImGuiDir_Right))
+            _collapsed = true;
+
+        ImGui::End();
+    }
 
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandQueue.getCommandBuffer());

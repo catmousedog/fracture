@@ -6,14 +6,12 @@ class Pipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    Pipeline(VulkanCore& vulkanCore, vk::DescriptorType type, vk::ShaderStageFlagBits stage);
+    Pipeline(VulkanCore& vulkanCore);
 
-    virtual ~Pipeline();
+    virtual ~Pipeline() = default;
 
   private:
     void createDescriptorPool(vk::DescriptorType type);
-
-    void createDescriptorLayout(vk::DescriptorType type, vk::ShaderStageFlagBits stage);
 
     /* ==================== CAPABILITIES ==================== */
   public:
