@@ -224,9 +224,25 @@ void VulkanCore::createLogicalDevice()
         .enabledExtensionCount   = 1,
         .ppEnabledExtensionNames = deviceExtensions
     };
-    vk::PhysicalDeviceFeatures2        deviceFeatures2{.features = {.samplerAnisotropy = true}};
-    vk::PhysicalDeviceVulkan13Features deviceFeatures13{.synchronization2 = true, .dynamicRendering = true};
-    vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT deviceFeaturesDynamicState{.extendedDynamicState = true};
+
+    auto features = _physicalDevice.getFeatures2().features;
+    if (!features.samplerAnisotropy)
+        FATAL("Device does not support anisotropic filtering!");
+    if (!features.shaderFloat64)
+        FATAL("Device does not support doubles in shaders!");
+    vk::PhysicalDeviceFeatures2 deviceFeatures2{
+        .features = {
+            .samplerAnisotropy = true, // anisotropic filtering
+            .shaderFloat64     = true  // doubles in shader
+        }
+    };
+    vk::PhysicalDeviceVulkan13Features deviceFeatures13{
+        .synchronization2 = true, // new API features
+        .dynamicRendering = true  // dynamic rendering
+    };
+    vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT deviceFeaturesDynamicState{
+        .extendedDynamicState = true // dynamic rendering
+    };
 
     vk::StructureChain<
         vk::DeviceCreateInfo,
@@ -494,7 +510,9 @@ bool VulkanCore::present(uint32_t imageIndex)
 
     // recreate swapchain if out-of-date or if window was resized
     if (presentResult == vk::Result::eErrorOutOfDateKHR || (_window->getSize() != _swapChainExtent))
+    {
         return false;
+    }
     else if (presentResult == vk::Result::eSuboptimalKHR)
         Log::warn("vk::Queue::presentKHR returned vk::Result::eSuboptimalKHR");
     else if (presentResult != vk::Result::eSuccess)

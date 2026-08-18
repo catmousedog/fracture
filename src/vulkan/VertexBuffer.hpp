@@ -54,7 +54,6 @@ class VertexBuffer
     VulkanCore&   _vulkanCore;
     CommandQueue& _commandQueue;
 
-    // --- Fullscreen Quad --- //
     // Vertex Buffer
     std::vector<Vertex>    _vertices           = {};
     vk::raii::Buffer       _vertexBuffer       = nullptr;

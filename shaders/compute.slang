@@ -18,14 +18,11 @@ void compMain(uint3 id : SV_DispatchThreadID)
     outputImage.GetDimensions(width, height);
     if (id.x >= width || id.y >= height) return;
 
-    // normalize pixel to [-1, 1] range, correcting for aspect ratio
     float2 uv = (float2(id.xy) / float2(width, height)) * 2.0 - 1.0;
     uv.x *= float(width) / float(height);
 
-    // map to complex plane using zoom + center offset
     float2 c = pc.center + uv * pc.zoom;
 
-    // Mandelbrot loop
     float2 z = float2(0.0, 0.0);
     int i;
     for (i = 0; i < pc.maxIterations; i++)
@@ -35,6 +32,6 @@ void compMain(uint3 id : SV_DispatchThreadID)
         if (dot(z, z) > 4.0) break;
     }
 
-    float t = float(i) / float(pc.maxIterations);
-    outputImage[id.xy] = float4(t, t, t, 1.0); // grayscale for now, color mapping later
+    float t = i / (float)pc.maxIterations;
+    outputImage[id.xy] = float4(t, t, t, 1.0);
 }
