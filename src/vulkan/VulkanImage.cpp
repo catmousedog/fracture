@@ -17,7 +17,7 @@ VulkanImage::VulkanImage(VulkanCore& vulkanCore, CommandQueue& commandQueue)
 
 void VulkanImage::createComputeImage()
 {
-    auto  extent = _vulkanCore.getSwapChainExtent();
+    _extent      = _vulkanCore.getSwapChainExtent();
     auto& device = _vulkanCore.getDevice();
 
     constexpr vk::Format format = vk::Format::eR8G8B8A8Unorm;
@@ -26,7 +26,7 @@ void VulkanImage::createComputeImage()
     vk::ImageCreateInfo imageInfo{
         .imageType     = vk::ImageType::e2D,
         .format        = format,
-        .extent        = {extent.width, extent.height, 1},
+        .extent        = {_extent.width, _extent.height, 1},
         .mipLevels     = 1,
         .arrayLayers   = 1,
         .samples       = vk::SampleCountFlagBits::e1,

@@ -1,48 +1,63 @@
 #pragma once
 
+#include "backend/Backend.hpp"
 #include "core/fractals/Fractal.hpp"
-#include "render/UI.hpp"
 #include "vulkan/VertexBuffer.hpp"
 #include "window/Window.hpp"
 
 #include "vulkan/CommandQueue.hpp"
 #include "vulkan/VulkanCore.hpp"
 #include "vulkan/VulkanImage.hpp"
-#include "vulkan/pipeline/ComputePipeline.hpp"
 #include "vulkan/pipeline/GraphicsPipeline.hpp"
 
 class Renderer
 {
     /* ======================== SETUP ======================= */
   public:
-    Renderer(Window* window, const Fractal* fractal);
+    Renderer(VulkanCore& vulkanCore, const Fractal& fractal, Window* window);
 
     virtual ~Renderer();
 
+  private:
+    void initUI();
+
     /* ==================== CAPABILITIES ==================== */
-    void draw();
+  public:
+    void beginUIFrame();
+
+    void draw(Backend& backend, bool recompute);
 
     /* ================== HELPER FUNCTIONS ================== */
   private:
-    void record(uint32_t imageIndex);
+    void record(uint32_t imageIndex, Backend& backend, bool recompute);
 
-    void resize();
+    void resize(Backend& backend);
+
+    /* ================= GETTERS AND SETTERS ================ */
+  public:
+    VulkanImage& getImage()
+    {
+        return _vulkanImage;
+    }
+
+    CommandQueue& getCommandQueue()
+    {
+        return _commandQueue;
+    }
 
   private:
-    const Fractal* _fractal;
+    const Fractal& _fractal;
 
     Window* _window = nullptr;
 
     // --- Vulkan --- //
-    VulkanCore       _vulkanCore;
+    VulkanCore&      _vulkanCore;
     CommandQueue     _commandQueue;
-    VertexBuffer     _vertexBuffer;
     VulkanImage      _vulkanImage;
-    ComputePipeline  _computePipeline;
+    VertexBuffer     _vertexBuffer;
     GraphicsPipeline _graphicsPipeline;
 
-    // --- UI --- //
-    UI _ui;
+    vk::raii::DescriptorPool _uiDescriptorPool = nullptr;
 
-    bool _dirty = true;
+    bool _resized = false;
 };

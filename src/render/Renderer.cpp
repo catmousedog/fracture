@@ -1,5 +1,9 @@
 #include "Renderer.hpp"
 
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_vulkan.h"
+
+#include "util/Log.hpp"
 #include "util/Vulkan.hpp"
 
 #include <cstdint>
@@ -15,27 +19,79 @@ constexpr uint32_t FRAMES_IN_FLIGHT = 2;
 
 ////////////////////////////////////////////////////////////
 
-Renderer::Renderer(Window* window, const Fractal* fractal)
+Renderer::Renderer(VulkanCore& vulkanCore, const Fractal& fractal, Window* window)
     : _fractal(fractal),
       _window(window),
-      _vulkanCore(_window),
+      _vulkanCore(vulkanCore),
       _commandQueue(_vulkanCore, FRAMES_IN_FLIGHT),
       _vertexBuffer(_vulkanCore, _commandQueue),
       _vulkanImage(_vulkanCore, _commandQueue),
-      _computePipeline(_vulkanCore, _vulkanImage, _fractal->getSettings()),
-      _graphicsPipeline(_vulkanCore, _vulkanImage),
-      _ui(&_vulkanCore, FRAMES_IN_FLIGHT)
+      _graphicsPipeline(_vulkanCore, _vulkanImage)
 {
-    _vulkanCore.logInfo();
+    initUI();
 }
 
 ////////////////////////////////////////////////////////////
 
-Renderer::~Renderer() = default;
+Renderer::~Renderer()
+{
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
 
 ////////////////////////////////////////////////////////////
 
-void Renderer::draw()
+void Renderer::initUI()
+{
+    vk::DescriptorPoolSize poolSizes[] = {
+        {vk::DescriptorType::eSampledImage, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLED_IMAGE_POOL_SIZE}, // 8
+        {vk::DescriptorType::eSampler, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE}             // 2
+    };
+    vk::DescriptorPoolCreateInfo pool_info = {
+        .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets       = 10, // 8 + 2
+        .poolSizeCount = 2,
+        .pPoolSizes    = poolSizes
+    };
+    _uiDescriptorPool = _vulkanCore.getDevice().createDescriptorPool(pool_info);
+
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForVulkan(_window->getGLFWWindow(), true);
+
+    vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo = {
+        .colorAttachmentCount    = 1,                                     //
+        .pColorAttachmentFormats = &_vulkanCore.getSurfaceFormat().format //
+    };
+
+    ImGui_ImplVulkan_InitInfo initInfo{
+        .Instance            = *_vulkanCore.getInstance(),
+        .PhysicalDevice      = *_vulkanCore.getPhysicalDevice(),
+        .Device              = *_vulkanCore.getDevice(),
+        .QueueFamily         = _vulkanCore.getFamilyIndex(),
+        .Queue               = *_vulkanCore.getQueue(),
+        .DescriptorPool      = *_uiDescriptorPool,
+        .MinImageCount       = FRAMES_IN_FLIGHT,
+        .ImageCount          = FRAMES_IN_FLIGHT,
+        .PipelineInfoMain    = {.PipelineRenderingCreateInfo = pipelineRenderingCreateInfo},
+        .UseDynamicRendering = true
+    };
+
+    ImGui_ImplVulkan_Init(&initInfo);
+}
+
+////////////////////////////////////////////////////////////
+
+void Renderer::beginUIFrame()
+{
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
+
+////////////////////////////////////////////////////////////
+
+void Renderer::draw(Backend& backend, bool recompute)
 {
     _commandQueue.waitForFences();
 
@@ -44,7 +100,7 @@ void Renderer::draw()
 
     if (!imageIndex)
     {
-        resize();
+        resize(backend);
         return;
     }
     // each image has its own semaphore to indicate it is ready for presentation
@@ -53,14 +109,14 @@ void Renderer::draw()
     /* ======================= RENDER ======================= */
     _commandQueue.reset();
 
-    record(*imageIndex);
+    record(*imageIndex, backend, recompute);
 
     _commandQueue.submit(renderFinishedSemaphore);
 
     /* ======================= PRESENT ====================== */
     if (!_vulkanCore.present(*imageIndex))
     {
-        resize();
+        resize(backend);
     }
 
     _commandQueue.nextFrame();
@@ -68,50 +124,16 @@ void Renderer::draw()
 
 ////////////////////////////////////////////////////////////
 
-void Renderer::record(uint32_t imageIndex)
+void Renderer::record(uint32_t imageIndex, Backend& backend, bool recompute)
 {
     _commandQueue.begin();
 
-    // --- Recompute --- //
-    if (_dirty)
+    // // --- Recompute --- //
+    if (recompute || _resized)
     {
-        // --- Transition to General --- //
-        util::transitionImageLayout(
-            _commandQueue.getCommandBuffer(),
-            {
-                .srcStageMask  = vk::PipelineStageFlagBits2::eFragmentShader,
-                .srcAccessMask = vk::AccessFlagBits2::eShaderRead,
-                .dstStageMask  = vk::PipelineStageFlagBits2::eComputeShader,
-                .dstAccessMask = vk::AccessFlagBits2::eShaderWrite,
-                .oldLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,
-                .newLayout     = vk::ImageLayout::eGeneral,
-                .image         = _vulkanImage.getComputeImage(),
-            }
-        );
+        _resized = false;
 
-        // --- Bind Pipeline --- //
-        _computePipeline.bind(_commandQueue);
-
-        // --- Execute --- //
-        auto     extent = _vulkanCore.getSwapChainExtent();
-        uint32_t groupX = (extent.width + 15) / 16;
-        uint32_t groupY = (extent.height + 15) / 16;
-        _commandQueue.dispatch(groupX, groupY, 1);
-
-        // --- Transition to ShaderReadOnlyOptimal --- //
-        util::transitionImageLayout(
-            _commandQueue.getCommandBuffer(),
-            {
-                .srcStageMask  = vk::PipelineStageFlagBits2::eComputeShader,
-                .srcAccessMask = vk::AccessFlagBits2::eShaderWrite,
-                .dstStageMask  = vk::PipelineStageFlagBits2::eFragmentShader,
-                .dstAccessMask = vk::AccessFlagBits2::eShaderRead,
-                .oldLayout     = vk::ImageLayout::eGeneral,
-                .newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,
-                .image         = _vulkanImage.getComputeImage(),
-            }
-        );
-        _dirty = false;
+        backend.recompute();
     }
 
     // --- Prepare and Begin Rendering --- //
@@ -122,7 +144,11 @@ void Renderer::record(uint32_t imageIndex)
 
     // --- Draw --- //
     _vertexBuffer.draw(_commandQueue);
-    _ui.draw(_commandQueue);
+
+    // _ui.draw(); // UI SHOULD DRAW IN BETWEEN HERE SO SPLIT THIS FUNCTION
+
+    ImGui::Render();
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *_commandQueue.getCommandBuffer());
 
     // --- End Rendering --- //
     _commandQueue.endRendering();
@@ -145,7 +171,7 @@ void Renderer::record(uint32_t imageIndex)
 
 ////////////////////////////////////////////////////////////
 
-void Renderer::resize()
+void Renderer::resize(Backend& backend)
 {
     _vulkanCore.waitIdle();
 
@@ -157,9 +183,10 @@ void Renderer::resize()
 
     // update descriptor sets (reassign)
     _graphicsPipeline.updateDescriptorSet();
-    _computePipeline.updateDescriptorSet();
 
-    _dirty = true;
+    backend.resize();
+
+    _resized = true;
 }
 
 ////////////////////////////////////////////////////////////

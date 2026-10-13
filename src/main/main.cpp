@@ -3,7 +3,6 @@
 
 int main()
 {
-
     Fracture fracture;
     fracture.mainLoop();
 

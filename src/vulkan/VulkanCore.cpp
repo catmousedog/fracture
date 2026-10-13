@@ -8,7 +8,6 @@
 #include <vulkan/vulkan_to_string.hpp>
 
 #include <fstream>
-#include <tuple>
 
 ////////////////////////////////////////////////////////////
 
@@ -239,7 +238,7 @@ void VulkanCore::createLogicalDevice()
             deviceFeatures2,           // anisotropic filtering
             deviceFeatures13,          // new API features + dynamic rendering
             deviceFeaturesDynamicState // dynamic rendering
-        };
+    };
 
     _device = _physicalDevice.createDevice(chain.get<vk::DeviceCreateInfo>());
 
@@ -275,7 +274,7 @@ void VulkanCore::createSurfaceFormat()
 void VulkanCore::createSwapchain()
 {
     // --- Set swapchain extent --- //
-    std::tie(_swapChainExtent.width, _swapChainExtent.height) = _window->getSize();
+    _swapChainExtent = _window->getSize();
 
     /* ================== CREATE SWAPCHAIN ================== */
     vk::SwapchainCreateInfoKHR swapChainInfo{
@@ -494,9 +493,8 @@ bool VulkanCore::present(uint32_t imageIndex)
     auto presentResult = _queue.presentKHR(presentInfoKHR);
 
     // recreate swapchain if out-of-date or if window was resized
-    if (presentResult == vk::Result::eErrorOutOfDateKHR || _window->dirty)
+    if (presentResult == vk::Result::eErrorOutOfDateKHR || (_window->getSize() != _swapChainExtent))
     {
-        _window->dirty = false;
         return false;
     }
     else if (presentResult == vk::Result::eSuboptimalKHR)

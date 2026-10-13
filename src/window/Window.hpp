@@ -1,10 +1,6 @@
 #pragma once
 
-#include "core/fractals/Fractal.hpp"
-
-#include <cstdint>
-#include <utility>
-#include <vector>
+#include <vulkan/vulkan.hpp>
 
 namespace vk::raii
 {
@@ -18,7 +14,7 @@ class Window
 {
     /* ======================== SETUP ======================= */
   public:
-    Window(Fractal::Settings* settings);
+    Window();
 
     virtual ~Window();
 
@@ -33,26 +29,21 @@ class Window
 
     /* ================= GETTERS AND SETTERS ================ */
 
-    std::pair<uint32_t, uint32_t> getSize();
+    vk::Extent2D getSize();
 
     class GLFWwindow* getGLFWWindow()
     {
         return _glfwWindow;
     }
 
-    Fractal::Settings* getSettings()
-    {
-        return _settings;
-    }
-
     /* ====================== VARIABLES ===================== */
   private:
-    class GLFWwindow*  _glfwWindow = nullptr;
-    Fractal::Settings* _settings   = nullptr;
+    class GLFWwindow* _glfwWindow = nullptr;
 
   public:
-    bool   dirty    = false;         // recompute flag
     bool   dragging = false;         // mouse dragging flag
     bool   ctrl     = false;         // ctrl key held
     double lastX = 0.0, lastY = 0.0; // previous mouse position
+
+    double deltaX = 0.0, deltaY = 0.0; // drag delta
 };

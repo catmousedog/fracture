@@ -30,6 +30,10 @@ class VulkanImage
     {
         return _sampler;
     }
+    vk::Extent2D getExtent()
+    {
+        return _extent;
+    }
 
     /* ====================== VARIABLES ===================== */
   private:
@@ -41,5 +45,5 @@ class VulkanImage
     vk::raii::DeviceMemory _computeImageMemory = nullptr;
     vk::raii::ImageView    _computeImageView   = nullptr;
     vk::raii::Sampler      _sampler            = nullptr;
-    bool                   _dirty              = true;
+    vk::Extent2D           _extent             = {0, 0};
 };

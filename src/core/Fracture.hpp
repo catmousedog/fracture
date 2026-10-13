@@ -1,7 +1,9 @@
 #pragma once
 
+#include "backend/Backend.hpp"
 #include "core/fractals/Fractal.hpp"
 #include "render/Renderer.hpp"
+#include "render/UI.hpp"
 #include "window/Window.hpp"
 
 class Fracture
@@ -16,7 +18,21 @@ class Fracture
 
     /* ====================== VARIABLES ===================== */
   private:
-    std::unique_ptr<Fractal> _fractal;
-    Window                   _window;
-    Renderer                 _renderer;
+    // window that will use GLFW implementation
+    Window _window;
+
+    // UI is agnostic to renderer or fractal
+    UI _ui;
+
+    // data relevant to the fractal like position, zoom, iterations
+    Fractal _fractal;
+    Fractal _prevFractal; // compare changes
+
+    VulkanCore _vulkanCore;
+
+    // renderer that will use Vulkan implementation
+    Renderer _renderer;
+
+    // backend to calculate fractal outputs
+    std::unique_ptr<Backend> _backend;
 };

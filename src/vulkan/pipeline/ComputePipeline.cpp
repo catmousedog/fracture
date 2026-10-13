@@ -2,10 +2,9 @@
 
 ////////////////////////////////////////////////////////////
 
-ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const Fractal::Settings& fractalSettings)
+ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image)
     : Pipeline(vulkanCore),
-      _image(image),
-      _fractalSettings(fractalSettings)
+      _image(image)
 {
     createDescriptorPool();
     createDescriptorLayout();
@@ -80,16 +79,16 @@ void ComputePipeline::createPipeline()
     };
 
     // --- Push Constants --- //
-    vk::PushConstantRange pushConstantRange{
-        .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = sizeof(_fractalSettings)
-    };
+    // vk::PushConstantRange pushConstantRange{
+    //     .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = sizeof(_fractalSettings)
+    // };
 
     /* =================== CREATE PIPELINE ================== */
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-        .setLayoutCount         = 1,
-        .pSetLayouts            = &*_descriptorSetLayout,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges    = &pushConstantRange
+        .setLayoutCount = 1,
+        .pSetLayouts    = &*_descriptorSetLayout,
+        // .pushConstantRangeCount = 1,
+        // .pPushConstantRanges    = &pushConstantRange
     };
     _pipelineLayout = _vulkanCore.getDevice().createPipelineLayout(pipelineLayoutInfo);
 
@@ -130,9 +129,9 @@ void ComputePipeline::bind(CommandQueue& commandQueue)
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, _pipelineLayout, 0, *_descriptorSet, nullptr);
 
     // --- Push Constants --- //
-    commandBuffer.pushConstants(
-        _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(_fractalSettings), &_fractalSettings
-    );
+    // commandBuffer.pushConstants(
+    //     _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(_fractalSettings), &_fractalSettings
+    // );
 }
 
 ////////////////////////////////////////////////////////////

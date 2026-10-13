@@ -1,143 +1,152 @@
 {
 	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "clean shaders",
-			"type": "shell",
-			"command": "rm ${workspaceFolder}/build/release/shaders/*.spv ${workspaceFolder}/build/debug/shaders/*.spv",
-			"presentation": {
-				"echo": false,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true,
-				"close": false
-			},
-			"group": "none"
+	// Defaults shared by every task (individual tasks can override)
+	"options": {
+		"env": {
+			"NINJA_STATUS": "[%f/%t %p] ",
+			// ninja strips colors when piped unless this is set
+			"CLICOLOR_FORCE": "1"
 		},
+		"shell": {
+			"executable": "bash",
+			"args": [
+				"-o",
+				"pipefail",
+				"-c"
+			]
+		}
+	},
+	"presentation": {
+		"echo": false,
+		"reveal": "silent",
+		"focus": false,
+		"panel": "shared",
+		"showReuseMessage": false,
+		"clear": true,
+		"close": false
+	},
+	"tasks": [
+		// ---------- configure ----------
 		{
 			"label": "cmake",
 			"type": "shell",
-			"command": "cmake",
-			"args": [
-				"-G",
-				"Ninja",
-				"-DCMAKE_BUILD_TYPE=Release",
-				"-S",
-				"${workspaceFolder}",
-				"-B",
-				"${workspaceFolder}/build/release/"
-			],
-			"presentation": {
-				"echo": false,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true,
-				"close": false
-			},
-			"group": "none"
+			"command": "cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_COLOR_DIAGNOSTICS=ON -S '${workspaceFolder}' -B '${workspaceFolder}/build/release'",
+			"problemMatcher": []
 		},
 		{
 			"label": "cmake (debug)",
 			"type": "shell",
-			"command": "cmake",
-			"args": [
-				"-G",
-				"Ninja",
-				"-DCMAKE_BUILD_TYPE=Debug",
-				"-S",
-				"${workspaceFolder}",
-				"-B",
-				"${workspaceFolder}/build/debug/"
-			],
-			"presentation": {
-				"echo": false,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true,
-				"close": false
-			},
-			"group": "none"
+			"command": "cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_COLOR_DIAGNOSTICS=ON -S '${workspaceFolder}' -B '${workspaceFolder}/build/debug'",
+			"problemMatcher": []
 		},
+		// ---------- build ----------
 		{
 			"label": "build",
 			"type": "shell",
-			"command": "ninja -j 8 && echo ======== BUILD SUCCESSFUL ========",
+			"command": "ninja -j 8 | cat && echo -e '\\e[1;32m======== BUILD SUCCESSFUL (release) ========\\e[0m' || { echo -e '\\e[1;31m======== BUILD FAILED (release) ========\\e[0m'; exit 1; }",
 			"options": {
-				"cwd": "${workspaceFolder}/build/release/"
-			},
-			"presentation": {
-				"echo": false,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true,
-				"close": false
+				"cwd": "${workspaceFolder}/build/release"
 			},
 			"dependsOn": "cmake",
-			"group": "build"
+			"problemMatcher": {
+				"owner": "cpp",
+				"source": "gcc",
+				"fileLocation": [
+					"autoDetect",
+					"${workspaceFolder}/build/release"
+				],
+				"pattern": {
+					"regexp": "^(.*?):(\\d+):(\\d+):\\s+(?:fatal\\s+)?(warning|error|note):\\s+(.*)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"message": 5
+				}
+			},
+			"group": {
+				"kind": "build"
+			}
 		},
 		{
 			"label": "build (debug)",
 			"type": "shell",
-			"command": "ninja -j 8 && echo ======== BUILD SUCCESSFUL ========",
+			"command": "ninja -j 8 | cat && echo -e '\\e[1;32m======== BUILD SUCCESSFUL (debug) ========\\e[0m' || { echo -e '\\e[1;31m======== BUILD FAILED (debug) ========\\e[0m'; exit 1; }",
 			"options": {
-				"cwd": "${workspaceFolder}/build/debug/"
-			},
-			"presentation": {
-				"echo": false,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true,
-				"close": false
+				"cwd": "${workspaceFolder}/build/debug"
 			},
 			"dependsOn": "cmake (debug)",
+			"problemMatcher": {
+				"owner": "cpp",
+				"source": "gcc",
+				"fileLocation": [
+					"autoDetect",
+					"${workspaceFolder}/build/debug"
+				],
+				"pattern": {
+					"regexp": "^(.*?):(\\d+):(\\d+):\\s+(?:fatal\\s+)?(warning|error|note):\\s+(.*)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"message": 5
+				}
+			},
 			"group": "build"
+		},
+		// ---------- run ----------
+		{
+			"label": "run",
+			"type": "shell",
+			"command": "'${workspaceFolder}/build/release/src/main/fracture'",
+			"options": {
+				"cwd": "${workspaceFolder}/run"
+			},
+			"presentation": {
+				"reveal": "always",
+				"focus": true
+			},
+			"problemMatcher": [],
+			"group": "test"
 		},
 		{
 			"label": "run (+build)",
 			"type": "shell",
-			"command": "${workspaceFolder}/build/release/src/main/fracture",
+			"command": "'${workspaceFolder}/build/release/src/main/fracture'",
 			"options": {
-				"cwd": "${workspaceFolder}/run/"
+				"cwd": "${workspaceFolder}/run"
 			},
 			"presentation": {
-				"echo": false,
 				"reveal": "always",
-				"focus": true,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true,
-				"close": false
+				"focus": true
 			},
-			"group": "test",
-			"dependsOn": "build"
+			"dependsOn": "build",
+			"problemMatcher": [],
+			"group": {
+				"kind": "test"
+			}
 		},
 		{
-			"label": "run",
+			"label": "run (debug, +build)",
 			"type": "shell",
-			"command": "${workspaceFolder}/build/release/src/main/fracture",
+			"command": "'${workspaceFolder}/build/debug/src/main/fracture'",
 			"options": {
-				"cwd": "${workspaceFolder}/run/"
+				"cwd": "${workspaceFolder}/run"
 			},
 			"presentation": {
-				"echo": false,
 				"reveal": "always",
-				"focus": true,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true,
-				"close": false
+				"focus": true
 			},
+			"dependsOn": "build (debug)",
+			"problemMatcher": [],
 			"group": "test"
+		},
+		// ---------- utilities ----------
+		{
+			"label": "clean shaders",
+			"type": "shell",
+			"command": "rm -f '${workspaceFolder}'/build/{release,debug}/shaders/*.spv && echo 'Shaders cleaned.'",
+			"problemMatcher": []
 		}
 	]
 }

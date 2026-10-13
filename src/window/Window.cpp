@@ -23,12 +23,6 @@ GLFWwindow* createWindow()
 
 ////////////////////////////////////////////////////////////
 
-void framebufferResizeCallback(GLFWwindow* glfwWindow, int width, int height)
-{
-    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
-    window->dirty  = true;
-}
-
 void scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -39,17 +33,17 @@ void scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset)
 
     if (window->ctrl)
     {
-        float maxIter    = window->getSettings()->maxIter;
-        float iterFactor = (yoffset < 0) ? 1 / 1.1f : 1.1f;
-        maxIter *= iterFactor;
-        window->getSettings()->maxIter = std::max(maxIter, 1.f);
-        window->dirty                  = true;
+        // float maxIter    = window->getSettings()->maxIter;
+        // float iterFactor = (yoffset < 0) ? 1 / 1.1f : 1.1f;
+        // maxIter *= iterFactor;
+        // window->getSettings()->maxIter = std::max(maxIter, 1.f);
+        // window->dirty                  = true;
     }
     else
     {
-        float zoomFactor = (yoffset < 0) ? 1.1f : 1.f / 1.1f;
-        window->getSettings()->zoom *= zoomFactor;
-        window->dirty = true;
+        // float zoomFactor = (yoffset < 0) ? 1.1f : 1.f / 1.1f;
+        // window->getSettings()->zoom *= zoomFactor;
+        // window->dirty = true;
     }
 }
 
@@ -92,13 +86,11 @@ void cursorPosCallback(GLFWwindow* glfwWindow, double xpos, double ypos)
         glfwGetWindowSize(glfwWindow, &w, &h);
         double height = h;
 
-        float ux   = 2 * dx / height;
-        float uy   = -2 * dy / height;
-        float zoom = window->getSettings()->zoom;
-
-        window->getSettings()->offsetX -= ux * zoom;
-        window->getSettings()->offsetY -= uy * zoom;
-        window->dirty = true;
+        window->deltaX += 2 * dx / height;
+        window->deltaY += -2 * dy / height;
+        // float zoom = window->getSettings()->zoom;
+        // window->getSettings()->offsetX -= ux * zoom;
+        // window->getSettings()->offsetY -= uy * zoom;
     }
 }
 
@@ -122,13 +114,10 @@ void keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int action, int 
 
 ////////////////////////////////////////////////////////////
 
-Window::Window(Fractal::Settings* settings)
-    : _glfwWindow(createWindow()),
-      _settings(settings)
+Window::Window()
+    : _glfwWindow(createWindow())
 {
     glfwSetWindowUserPointer(_glfwWindow, this);
-    glfwSetFramebufferSizeCallback(_glfwWindow, framebufferResizeCallback);
-
     glfwSetScrollCallback(_glfwWindow, scrollCallback);
     glfwSetMouseButtonCallback(_glfwWindow, mouseButtonCallback);
     glfwSetCursorPosCallback(_glfwWindow, cursorPosCallback);
@@ -182,11 +171,11 @@ std::vector<const char*> Window::getRequiredExtensions()
 
 ////////////////////////////////////////////////////////////
 
-std::pair<uint32_t, uint32_t> Window::getSize()
+vk::Extent2D Window::getSize()
 {
     int width, height;
     glfwGetFramebufferSize(_glfwWindow, &width, &height);
-    return {width, height};
+    return vk::Extent2D(width, height);
 }
 
 ////////////////////////////////////////////////////////////

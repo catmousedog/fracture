@@ -10,6 +10,7 @@ endfunction()
 
 add_subdirectory(window)
 add_subdirectory(vulkan)
+add_subdirectory(backend)
 add_subdirectory(render)
 add_subdirectory(core)
 add_subdirectory(main)

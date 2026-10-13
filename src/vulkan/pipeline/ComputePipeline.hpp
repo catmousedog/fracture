@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/fractals/Fractal.hpp"
 #include "vulkan/VulkanImage.hpp"
 #include "vulkan/pipeline/Pipeline.hpp"
 
@@ -8,7 +7,7 @@ class ComputePipeline : public Pipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image, const Fractal::Settings& fractalSettings);
+    ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image);
 
   private:
     void createDescriptorPool();
@@ -25,8 +24,14 @@ class ComputePipeline : public Pipeline
 
     virtual void bind(CommandQueue& commandQueue) override;
 
+    /* ================= GETTERS AND SETTERS ================ */
+
+    VulkanImage& getImage()
+    {
+        return _image;
+    }
+
     /* ====================== VARIABLES ===================== */
   private:
-    VulkanImage&             _image;
-    const Fractal::Settings& _fractalSettings;
+    VulkanImage& _image;
 };

@@ -1,31 +1,18 @@
 #pragma once
 
-#include "vulkan/CommandQueue.hpp"
-
-class UI final
+class UI
 {
-    /* ======================== SETUP ======================= */
   public:
-    UI(class VulkanCore* vulkanCore, uint32_t framesInFlight);
+    UI() = default;
 
-    ~UI();
-
-  private:
-    void createDescriptorPool();
-
-    void initImGUI();
+    virtual ~UI() = default;
 
     /* ==================== CAPABILITIES ==================== */
   public:
-    void draw(CommandQueue& commandQueue);
+    void draw();
 
     /* ====================== VARIABLES ===================== */
   private:
-    class VulkanCore* _vulkanCore     = nullptr;
-    uint32_t          _framesInFlight = 0;
-
-    vk::raii::DescriptorPool _descriptorPool = nullptr;
-
     float _uiWidth   = 200.0f;
     bool  _collapsed = false;
 };
