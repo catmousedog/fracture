@@ -16,13 +16,24 @@ class ComputePipeline : public Pipeline
 
     void createDescriptorSet();
 
-    void createPipeline();
+    void readShader();
 
     /* ==================== CAPABILITIES ==================== */
   public:
-    virtual void updateDescriptorSet() override;
+    void updatePipeline(uint32_t pushConstantSize);
 
-    virtual void bind(CommandQueue& commandQueue) override;
+    template <typename T>
+    void pushConstants(CommandQueue& commandQueue, T& constants)
+    {
+        auto& commandBuffer = commandQueue.getCommandBuffer();
+        commandBuffer.pushConstants(_pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(T), &constants);
+    }
+
+    /* ================== VIRTUAL FUNCTIONS ================= */
+
+    void updateDescriptorSet();
+
+    void bind(CommandQueue& commandQueue);
 
     /* ================= GETTERS AND SETTERS ================ */
 
@@ -33,5 +44,6 @@ class ComputePipeline : public Pipeline
 
     /* ====================== VARIABLES ===================== */
   private:
-    VulkanImage& _image;
+    VulkanImage&           _image;
+    vk::raii::ShaderModule _shader = nullptr;
 };

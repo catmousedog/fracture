@@ -13,6 +13,13 @@ constexpr float collapseButtonSize = 32.0f;
 
 ////////////////////////////////////////////////////////////
 
+UI::UI(Fractal& fractal)
+    : _fractal(fractal)
+{
+}
+
+////////////////////////////////////////////////////////////
+
 // should be called in between the imgui backend functions
 void UI::draw()
 {
@@ -55,7 +62,17 @@ void UI::draw()
         ImGui::Text("Fractal Settings");
         ImGui::Separator();
 
-        // your widgets go here, in order
+        ImGui::DragFloat("Offset X", &_fractal.offsetX, 0.01f * _fractal.zoom);
+        ImGui::DragFloat("Offset Y", &_fractal.offsetY, 0.01f * _fractal.zoom);
+
+        ImGui::SliderFloat("Zoom", &_fractal.zoom, 1e-5f, 4.0f, "%.6f", ImGuiSliderFlags_Logarithmic);
+
+        int maxIter = _fractal.maxIter;
+        ImGui::InputInt("Max Iterations", &maxIter);
+        _fractal.maxIter = maxIter;
+
+        if (ImGui::Button("Reset"))
+            _fractal = Fractal{};
 
         ImGui::End();
 

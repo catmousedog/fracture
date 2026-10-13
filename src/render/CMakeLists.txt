@@ -10,6 +10,7 @@ target_link_libraries(${TARGET} PRIVATE
 	imgui
 	window
 	backend
+	fractals
 )
 
 LINK_SRC(${TARGET})

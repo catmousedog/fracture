@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 struct Fractal
 {
     float offsetX = 0.0f, offsetY = 0.0f;

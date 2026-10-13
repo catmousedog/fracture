@@ -1,11 +1,11 @@
-// struct FractalPushConstants {
-//     float2 center;   // point in complex plane the view is centered on
-//     float zoom;      // scale factor
-//     float maxIterations;
-// };
+struct FractalPushConstants {
+    float2 center;   // point in complex plane the view is centered on
+    float zoom;      // scale factor
+    int maxIterations;
+};
 
-// [[vk::push_constant]]
-// FractalPushConstants pc;
+[[vk::push_constant]]
+FractalPushConstants pc;
 
 [[vk::binding(0, 0)]]
 RWTexture2D<float4> outputImage;
@@ -23,18 +23,18 @@ void compMain(uint3 id : SV_DispatchThreadID)
     uv.x *= float(width) / float(height);
 
     // map to complex plane using zoom + center offset
-    float2 c = 0. + uv * 1.0;
+    float2 c = pc.center + uv * pc.zoom;
 
     // Mandelbrot loop
     float2 z = float2(0.0, 0.0);
     int i;
-    for (i = 0; i < 100; i++)
+    for (i = 0; i < pc.maxIterations; i++)
     {
         float2 zSquared = float2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y);
         z = zSquared + c;
         if (dot(z, z) > 4.0) break;
     }
 
-    float t = float(i) / float(100);
+    float t = float(i) / float(pc.maxIterations);
     outputImage[id.xy] = float4(t, t, t, 1.0); // grayscale for now, color mapping later
 }

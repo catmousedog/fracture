@@ -5,7 +5,8 @@
 ////////////////////////////////////////////////////////////
 
 Fracture::Fracture()
-    : _vulkanCore(&_window),
+    : _ui(_fractal),
+      _vulkanCore(&_window),
       _renderer(_vulkanCore, &_window),
       _backend(std::make_unique<GPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImage()))
 {

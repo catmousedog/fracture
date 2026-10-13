@@ -6,18 +6,12 @@ class Pipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    Pipeline(VulkanCore& vulkanCore);
+    Pipeline(VulkanCore& vulkanCore)
+        : _vulkanCore(vulkanCore)
+    {
+    }
 
     virtual ~Pipeline() = default;
-
-  private:
-    void createDescriptorPool(vk::DescriptorType type);
-
-    /* ==================== CAPABILITIES ==================== */
-  public:
-    virtual void updateDescriptorSet() = 0;
-
-    virtual void bind(CommandQueue& commandQueue) = 0;
 
     /* ====================== VARIABLES ===================== */
   protected:

@@ -9,7 +9,7 @@ ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image)
     createDescriptorPool();
     createDescriptorLayout();
     createDescriptorSet();
-    createPipeline();
+    readShader();
 }
 
 ////////////////////////////////////////////////////////////
@@ -70,25 +70,31 @@ void ComputePipeline::createDescriptorSet()
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::createPipeline()
+void ComputePipeline::readShader()
 {
     // Create Shader
-    vk::raii::ShaderModule            shader = _vulkanCore.readShader("compute");
+    _shader = _vulkanCore.readShader("compute");
+}
+
+////////////////////////////////////////////////////////////
+
+void ComputePipeline::updatePipeline(uint32_t pushConstantSize)
+{
     vk::PipelineShaderStageCreateInfo compShaderStageInfo{
-        .stage = vk::ShaderStageFlagBits::eCompute, .module = shader, .pName = "compMain"
+        .stage = vk::ShaderStageFlagBits::eCompute, .module = _shader, .pName = "compMain"
     };
 
     // --- Push Constants --- //
-    // vk::PushConstantRange pushConstantRange{
-    //     .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = sizeof(_fractalSettings)
-    // };
+    vk::PushConstantRange pushConstantRange{
+        .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = pushConstantSize
+    };
 
     /* =================== CREATE PIPELINE ================== */
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-        .setLayoutCount = 1,
-        .pSetLayouts    = &*_descriptorSetLayout,
-        // .pushConstantRangeCount = 1,
-        // .pPushConstantRanges    = &pushConstantRange
+        .setLayoutCount         = 1,
+        .pSetLayouts            = &*_descriptorSetLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges    = &pushConstantRange
     };
     _pipelineLayout = _vulkanCore.getDevice().createPipelineLayout(pipelineLayoutInfo);
 

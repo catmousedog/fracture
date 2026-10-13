@@ -19,9 +19,9 @@ class GraphicsPipeline : public Pipeline
     void createPipeline();
 
   public:
-    virtual void updateDescriptorSet() override;
+    void updateDescriptorSet();
 
-    virtual void bind(CommandQueue& commandQueue) override;
+    void bind(CommandQueue& commandQueue);
 
     /* ====================== VARIABLES ===================== */
   private:

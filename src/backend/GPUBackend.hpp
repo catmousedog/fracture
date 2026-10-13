@@ -5,6 +5,15 @@
 
 class GPUBackend : public Backend
 {
+    /* ==================== NESTED CLASS ==================== */
+  private:
+    struct Constants
+    {
+        alignas(8) glm::vec2 offset = {0.0f, 0.0f};
+        alignas(4) float zoom       = 1.0f;
+        alignas(4) int maxIter      = 100;
+    };
+
     /* ======================== SETUP ======================= */
   public:
     GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, VulkanImage& vulkanImage);
@@ -16,6 +25,10 @@ class GPUBackend : public Backend
     virtual void recompute() override;
 
     virtual void onResize() override;
+
+    /* ================== HELPER FUNCTIONS ================== */
+
+    Constants makeConstants(const Fractal& fractal);
 
     /* ====================== VARIABLES ===================== */
 

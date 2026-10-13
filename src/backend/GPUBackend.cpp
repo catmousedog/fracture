@@ -31,6 +31,9 @@ void GPUBackend::recompute()
     );
 
     // --- Bind Pipeline --- //
+    Constants constants = makeConstants(_fractal);
+    _computePipeline.updatePipeline(sizeof(Constants));
+    _computePipeline.pushConstants(_commandQueue, constants);
     _computePipeline.bind(_commandQueue);
 
     // --- Execute --- //
@@ -59,6 +62,19 @@ void GPUBackend::recompute()
 void GPUBackend::onResize()
 {
     _computePipeline.updateDescriptorSet();
+}
+
+////////////////////////////////////////////////////////////
+
+GPUBackend::Constants GPUBackend::makeConstants(const Fractal& fractal)
+{
+    Constants constants;
+
+    constants.offset  = glm::vec2(fractal.offsetX, fractal.offsetY);
+    constants.zoom    = fractal.zoom;
+    constants.maxIter = (int)fractal.maxIter;
+
+    return constants;
 }
 
 ////////////////////////////////////////////////////////////
