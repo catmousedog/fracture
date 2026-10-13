@@ -83,8 +83,8 @@ void UI::draw()
         ImGui::SliderFloat("Zoom", &_fractal.zoom, 1e-5f, 4.0f, "%.6f", ImGuiSliderFlags_Logarithmic);
 
         int maxIter = _fractal.maxIter;
-        ImGui::InputInt("Max Iterations", &maxIter);
-        _fractal.maxIter = maxIter;
+        if (ImGui::InputInt("Max Iterations", &maxIter))
+            _fractal.maxIter = maxIter;
 
         if (ImGui::Button("Reset"))
             _fractal = Fractal{};

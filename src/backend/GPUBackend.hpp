@@ -3,6 +3,8 @@
 #include "backend/Backend.hpp"
 #include "vulkan/pipeline/ComputePipeline.hpp"
 
+#include <glm/glm.hpp>
+
 class GPUBackend : public Backend
 {
     /* ==================== NESTED CLASS ==================== */

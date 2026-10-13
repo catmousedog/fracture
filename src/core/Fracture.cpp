@@ -23,11 +23,10 @@ void Fracture::mainLoop()
         Window::Input input = _window.consumeInput();
         updateFractal(input);
 
-        _renderer.beginUIFrame();
-        _ui.draw();
-        _renderer.draw(*_backend);
-
-        _backend->setFractal(_fractal);
+        _renderer.beginUIFrame();       // prepare ImGui
+        _ui.draw();                     // create widgets
+        _backend->setFractal(_fractal); // flag backend to recompute if needed
+        _renderer.draw(*_backend);      // record graphics and ImGui (recompute if flagged)
     }
 }
 
