@@ -10,6 +10,7 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Vulka
       _commandQueue(commandQueue),
       _computePipeline(_vulkanCore, vulkanImage)
 {
+    _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
 }
 
 ////////////////////////////////////////////////////////////
@@ -32,7 +33,6 @@ void GPUBackend::recompute()
 
     // --- Bind Pipeline --- //
     Constants constants = makeConstants(_fractal);
-    _computePipeline.updatePipeline(sizeof(Constants));
     _computePipeline.pushConstants(_commandQueue, constants);
     _computePipeline.bind(_commandQueue);
 

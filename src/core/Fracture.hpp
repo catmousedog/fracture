@@ -16,6 +16,10 @@ class Fracture
 
     void mainLoop();
 
+    /* ================== HELPER FUNCTIONS ================== */
+
+    void updateFractal(const Window::Input& input);
+
     /* ====================== VARIABLES ===================== */
   private:
     // window that will use GLFW implementation

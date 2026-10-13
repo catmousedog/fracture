@@ -510,9 +510,7 @@ bool VulkanCore::present(uint32_t imageIndex)
 
     // recreate swapchain if out-of-date or if window was resized
     if (presentResult == vk::Result::eErrorOutOfDateKHR || (_window->getSize() != _swapChainExtent))
-    {
         return false;
-    }
     else if (presentResult == vk::Result::eSuboptimalKHR)
         Log::warn("vk::Queue::presentKHR returned vk::Result::eSuboptimalKHR");
     else if (presentResult != vk::Result::eSuccess)

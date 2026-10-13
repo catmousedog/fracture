@@ -23,7 +23,6 @@ UI::UI(Fractal& fractal)
 
 ////////////////////////////////////////////////////////////
 
-// should be called in between the imgui backend functions
 void UI::draw()
 {
     auto [width, height] = ImGui::GetIO().DisplaySize;

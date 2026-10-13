@@ -12,8 +12,17 @@ class Instance;
 
 class Window
 {
-    /* ======================== SETUP ======================= */
+    /* ==================== NESTED CLASS ==================== */
   public:
+    struct Input
+    {
+        float dragX = 0.0, dragY = 0.0;
+        float scroll = 0.0;
+        bool  ctrl   = false;
+    };
+
+    /* ======================== SETUP ======================= */
+
     Window();
 
     virtual ~Window();
@@ -29,6 +38,8 @@ class Window
 
     /* ================= GETTERS AND SETTERS ================ */
 
+    Input consumeInput();
+
     vk::Extent2D getSize();
 
     class GLFWwindow* getGLFWWindow()
@@ -36,14 +47,19 @@ class Window
         return _glfwWindow;
     }
 
+    /* ================== HELPER FUNCTIONS ================== */
+
+    static void scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset);
+    static void mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action, int mods);
+    static void cursorPosCallback(GLFWwindow* glfwWindow, double xpos, double ypos);
+    static void keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int action, int mods);
+
     /* ====================== VARIABLES ===================== */
   private:
     class GLFWwindow* _glfwWindow = nullptr;
 
-  public:
-    bool   dragging = false;         // mouse dragging flag
-    bool   ctrl     = false;         // ctrl key held
-    double lastX = 0.0, lastY = 0.0; // previous mouse position
+    bool   _dragging = false;          // mouse dragging flag
+    double _lastX = 0.0, _lastY = 0.0; // previous mouse position
 
-    double deltaX = 0.0, deltaY = 0.0; // drag delta
+    Input _input;
 };

@@ -21,33 +21,23 @@ GLFWwindow* createWindow()
     return glfwCreateWindow(1280, 720, "fracture", nullptr, nullptr);
 }
 
+} // namespace
+
 ////////////////////////////////////////////////////////////
 
-void scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset)
+void Window::scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset)
 {
     ImGuiIO& io = ImGui::GetIO();
     if (io.WantCaptureMouse)
         return;
 
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
-
-    if (window->ctrl)
-    {
-        // float maxIter    = window->getSettings()->maxIter;
-        // float iterFactor = (yoffset < 0) ? 1 / 1.1f : 1.1f;
-        // maxIter *= iterFactor;
-        // window->getSettings()->maxIter = std::max(maxIter, 1.f);
-        // window->dirty                  = true;
-    }
-    else
-    {
-        // float zoomFactor = (yoffset < 0) ? 1.1f : 1.f / 1.1f;
-        // window->getSettings()->zoom *= zoomFactor;
-        // window->dirty = true;
-    }
+    window->_input.scroll += yoffset;
 }
 
-void mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action, int mods)
+////////////////////////////////////////////////////////////
+
+void Window::mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action, int mods)
 {
     ImGuiIO& io = ImGui::GetIO();
     if (io.WantCaptureMouse)
@@ -58,59 +48,58 @@ void mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action, int mod
     {
         if (action == GLFW_PRESS)
         {
-            window->dragging = true;
-            glfwGetCursorPos(glfwWindow, &window->lastX, &window->lastY);
+            window->_dragging = true;
+            glfwGetCursorPos(glfwWindow, &window->_lastX, &window->_lastY);
         }
         else if (action == GLFW_RELEASE)
         {
-            window->dragging = false;
+            window->_dragging = false;
         }
     }
 }
 
-void cursorPosCallback(GLFWwindow* glfwWindow, double xpos, double ypos)
+////////////////////////////////////////////////////////////
+
+void Window::cursorPosCallback(GLFWwindow* glfwWindow, double xpos, double ypos)
 {
     ImGuiIO& io = ImGui::GetIO();
     if (io.WantCaptureMouse)
         return;
 
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
-    if (window->dragging)
+    if (window->_dragging)
     {
-        double dx     = xpos - window->lastX;
-        double dy     = ypos - window->lastY;
-        window->lastX = xpos;
-        window->lastY = ypos;
+        double dx      = xpos - window->_lastX;
+        double dy      = ypos - window->_lastY;
+        window->_lastX = xpos;
+        window->_lastY = ypos;
 
         int w, h;
         glfwGetWindowSize(glfwWindow, &w, &h);
         double height = h;
 
-        window->deltaX += 2 * dx / height;
-        window->deltaY += -2 * dy / height;
-        // float zoom = window->getSettings()->zoom;
-        // window->getSettings()->offsetX -= ux * zoom;
-        // window->getSettings()->offsetY -= uy * zoom;
+        window->_input.dragX += 2 * dx / height;
+        window->_input.dragY += -2 * dy / height;
     }
 }
 
-void keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int action, int mods)
+////////////////////////////////////////////////////////////
+
+void Window::keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int action, int mods)
 {
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
 
     if (action == GLFW_PRESS)
     {
         if (key == GLFW_KEY_LEFT_CONTROL)
-            window->ctrl = true;
+            window->_input.ctrl = true;
     }
     else if (action == GLFW_RELEASE)
     {
         if (key == GLFW_KEY_LEFT_CONTROL)
-            window->ctrl = false;
+            window->_input.ctrl = false;
     }
 }
-
-} // namespace
 
 ////////////////////////////////////////////////////////////
 
@@ -167,6 +156,17 @@ std::vector<const char*> Window::getRequiredExtensions()
 
     // guaranteed copy elision
     return vk::raii::SurfaceKHR(instance, surface);
+}
+
+////////////////////////////////////////////////////////////
+
+Window::Input Window::consumeInput()
+{
+    Input input   = _input;
+    _input.dragX  = 0.0;
+    _input.dragY  = 0.0;
+    _input.scroll = 0.0;
+    return input;
 }
 
 ////////////////////////////////////////////////////////////
