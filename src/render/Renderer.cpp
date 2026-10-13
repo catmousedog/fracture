@@ -2,8 +2,6 @@
 
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
-
-#include "util/Log.hpp"
 #include "util/Vulkan.hpp"
 
 #include <cstdint>
@@ -19,9 +17,8 @@ constexpr uint32_t FRAMES_IN_FLIGHT = 2;
 
 ////////////////////////////////////////////////////////////
 
-Renderer::Renderer(VulkanCore& vulkanCore, const Fractal& fractal, Window* window)
-    : _fractal(fractal),
-      _window(window),
+Renderer::Renderer(VulkanCore& vulkanCore, Window* window)
+    : _window(window),
       _vulkanCore(vulkanCore),
       _commandQueue(_vulkanCore, FRAMES_IN_FLIGHT),
       _vertexBuffer(_vulkanCore, _commandQueue),
@@ -91,7 +88,7 @@ void Renderer::beginUIFrame()
 
 ////////////////////////////////////////////////////////////
 
-void Renderer::draw(Backend& backend, bool recompute)
+void Renderer::draw(Backend& backend)
 {
     _commandQueue.waitForFences();
 
@@ -109,7 +106,7 @@ void Renderer::draw(Backend& backend, bool recompute)
     /* ======================= RENDER ======================= */
     _commandQueue.reset();
 
-    record(*imageIndex, backend, recompute);
+    record(*imageIndex, backend);
 
     _commandQueue.submit(renderFinishedSemaphore);
 
@@ -124,17 +121,12 @@ void Renderer::draw(Backend& backend, bool recompute)
 
 ////////////////////////////////////////////////////////////
 
-void Renderer::record(uint32_t imageIndex, Backend& backend, bool recompute)
+void Renderer::record(uint32_t imageIndex, Backend& backend)
 {
     _commandQueue.begin();
 
     // // --- Recompute --- //
-    if (recompute || _resized)
-    {
-        _resized = false;
-
-        backend.recompute();
-    }
+    backend.record();
 
     // --- Prepare and Begin Rendering --- //
     _vulkanCore.prepare(&_commandQueue, imageIndex); // Layout is ColorAttachmentOptimal
@@ -185,8 +177,6 @@ void Renderer::resize(Backend& backend)
     _graphicsPipeline.updateDescriptorSet();
 
     backend.resize();
-
-    _resized = true;
 }
 
 ////////////////////////////////////////////////////////////

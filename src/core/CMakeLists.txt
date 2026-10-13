@@ -7,8 +7,6 @@ add_library(${TARGET} STATIC
 
 add_dependencies(${TARGET} shaders)
 
-add_subdirectory(fractals)
-
 target_link_libraries(${TARGET} PRIVATE
 	fractals
 	backend

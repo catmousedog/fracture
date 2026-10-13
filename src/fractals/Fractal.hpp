@@ -7,6 +7,4 @@ struct Fractal
     float maxIter = 100;
 
     bool operator==(const Fractal& other) const = default;
-
-    Fractal();
 };

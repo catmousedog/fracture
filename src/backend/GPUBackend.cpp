@@ -1,4 +1,5 @@
 #include "GPUBackend.hpp"
+
 #include "util/Vulkan.hpp"
 #include "vulkan/VulkanImage.hpp"
 
@@ -55,7 +56,7 @@ void GPUBackend::recompute()
 
 ////////////////////////////////////////////////////////////
 
-void GPUBackend::resize()
+void GPUBackend::onResize()
 {
     _computePipeline.updateDescriptorSet();
 }

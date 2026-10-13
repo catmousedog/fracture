@@ -8,7 +8,8 @@ add_library(${TARGET} STATIC
 add_dependencies(${TARGET} shaders)
 
 target_link_libraries(${TARGET} PRIVATE
-	vulkan	
+	vulkan
+	fractals
 	util
 )
 

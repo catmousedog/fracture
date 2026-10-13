@@ -1,7 +1,7 @@
 #pragma once
 
 #include "backend/Backend.hpp"
-#include "core/fractals/Fractal.hpp"
+#include "fractals/Fractal.hpp"
 #include "render/Renderer.hpp"
 #include "render/UI.hpp"
 #include "window/Window.hpp"
@@ -12,7 +12,7 @@ class Fracture
   public:
     Fracture();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
 
     void mainLoop();
 
@@ -26,7 +26,6 @@ class Fracture
 
     // data relevant to the fractal like position, zoom, iterations
     Fractal _fractal;
-    Fractal _prevFractal; // compare changes
 
     VulkanCore _vulkanCore;
 

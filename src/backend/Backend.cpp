@@ -1,0 +1,33 @@
+#include "Backend.hpp"
+
+////////////////////////////////////////////////////////////
+
+void Backend::record()
+{
+    if (_dirty)
+    {
+        recompute();
+        _dirty = false;
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+void Backend::resize()
+{
+    onResize();
+    _dirty = true;
+}
+
+////////////////////////////////////////////////////////////
+
+void Backend::setFractal(const Fractal& fractal)
+{
+    if (fractal != _fractal)
+    {
+        _fractal = fractal;
+        _dirty   = true;
+    }
+}
+
+////////////////////////////////////////////////////////////

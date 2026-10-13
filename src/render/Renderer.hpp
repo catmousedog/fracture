@@ -1,20 +1,18 @@
 #pragma once
 
 #include "backend/Backend.hpp"
-#include "core/fractals/Fractal.hpp"
-#include "vulkan/VertexBuffer.hpp"
-#include "window/Window.hpp"
-
 #include "vulkan/CommandQueue.hpp"
+#include "vulkan/VertexBuffer.hpp"
 #include "vulkan/VulkanCore.hpp"
 #include "vulkan/VulkanImage.hpp"
 #include "vulkan/pipeline/GraphicsPipeline.hpp"
+#include "window/Window.hpp"
 
 class Renderer
 {
     /* ======================== SETUP ======================= */
   public:
-    Renderer(VulkanCore& vulkanCore, const Fractal& fractal, Window* window);
+    Renderer(VulkanCore& vulkanCore, Window* window);
 
     virtual ~Renderer();
 
@@ -25,11 +23,11 @@ class Renderer
   public:
     void beginUIFrame();
 
-    void draw(Backend& backend, bool recompute);
+    void draw(Backend& backend);
 
-    /* ================== HELPER FUNCTIONS ================== */
+    /* ================== PRIVATE FUNCTIONS ================= */
   private:
-    void record(uint32_t imageIndex, Backend& backend, bool recompute);
+    void record(uint32_t imageIndex, Backend& backend);
 
     void resize(Backend& backend);
 
@@ -45,9 +43,8 @@ class Renderer
         return _commandQueue;
     }
 
+    /* ====================== VARIABLES ===================== */
   private:
-    const Fractal& _fractal;
-
     Window* _window = nullptr;
 
     // --- Vulkan --- //
@@ -58,6 +55,4 @@ class Renderer
     GraphicsPipeline _graphicsPipeline;
 
     vk::raii::DescriptorPool _uiDescriptorPool = nullptr;
-
-    bool _resized = false;
 };
