@@ -17,16 +17,17 @@ class Fracture
     void mainLoop();
 
     /* ================== HELPER FUNCTIONS ================== */
-
+  private:
     void updateFractal(const Window::Input& input);
+
+    void updateBackend();
+
+    void switchBackend();
 
     /* ====================== VARIABLES ===================== */
   private:
     // window that will use GLFW implementation
     Window _window;
-
-    // UI is agnostic to renderer or fractal
-    UI _ui;
 
     // data relevant to the fractal like position, zoom, iterations
     Fractal _fractal;
@@ -37,5 +38,9 @@ class Fracture
     Renderer _renderer;
 
     // backend to calculate fractal outputs
+    Backend::Type            _backendType = Backend::Type::GPU, _prevBackendType = _backendType;
     std::unique_ptr<Backend> _backend;
+
+    // UI is agnostic to renderer or fractal
+    UI _ui;
 };

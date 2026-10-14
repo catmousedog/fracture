@@ -27,7 +27,7 @@ class Window
 
     virtual ~Window();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
     bool shouldClose();
 
     void pollEvents();

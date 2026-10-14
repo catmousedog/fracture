@@ -4,8 +4,16 @@
 
 class Backend
 {
-    /* ======================== SETUP ======================= */
+    /* ==================== NESTED CLASS ==================== */
   public:
+    enum class Type // WIP: better reflection?
+    {
+        GPU = 0,
+        CPU = 1
+    };
+
+    /* ======================== SETUP ======================= */
+
     Backend() = default;
 
     virtual ~Backend() = default;

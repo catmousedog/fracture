@@ -29,7 +29,7 @@ class VulkanCore
     // Sync objects
     void createSyncObjects();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
   public:
     void logInfo();
 

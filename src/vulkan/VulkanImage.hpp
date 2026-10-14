@@ -11,7 +11,7 @@ class VulkanImage
   private:
     void createComputeImage();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
   public:
     void recreateComputeImage();
 

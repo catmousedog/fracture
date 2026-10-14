@@ -26,7 +26,7 @@ class CommandQueue
 
     void createFrameWorkers();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
 
     void submit(vk::raii::Semaphore& renderFinishedSemaphore);
 

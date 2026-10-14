@@ -19,7 +19,7 @@ class Renderer
   private:
     void initUI();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
   public:
     void beginUIFrame();
 

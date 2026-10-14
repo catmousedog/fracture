@@ -42,7 +42,7 @@ class VertexBuffer
     void createVertexBuffer();
     void createIndexBuffer();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
   public:
     void draw(CommandQueue& commandQueue);
 

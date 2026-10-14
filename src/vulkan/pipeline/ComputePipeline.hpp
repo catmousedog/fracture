@@ -18,7 +18,7 @@ class ComputePipeline : public Pipeline
 
     void readShader();
 
-    /* ==================== CAPABILITIES ==================== */
+    /* ================== PUBLIC FUNCTIONS ================== */
   public:
     void updatePipeline(uint32_t pushConstantSize);
 

@@ -2,6 +2,9 @@
 
 #include "imgui.h"
 
+#include <utility>
+#include <vector>
+
 ////////////////////////////////////////////////////////////
 
 namespace
@@ -16,8 +19,9 @@ constexpr ImVec4 bgColorHighlight   = ImVec4(.2f, .2f, .3f, 1.f);
 
 ////////////////////////////////////////////////////////////
 
-UI::UI(Fractal& fractal)
-    : _fractal(fractal)
+UI::UI(Fractal& fractal, Backend::Type& backendType)
+    : _fractal(fractal),
+      _backendType(backendType)
 {
 }
 
@@ -76,6 +80,11 @@ void UI::draw()
 
         ImGui::Text("Fractal Settings");
         ImGui::Separator();
+
+        std::vector<const char*> items   = {"GPU", "CPU"}; // WIP: reflection
+        int                      current = std::to_underlying(_backendType);
+        if (ImGui::ListBox("Backend", &current, items.data(), items.size(), 2))
+            _backendType = static_cast<Backend::Type>(current);
 
         ImGui::DragFloat("Offset X", &_fractal.offsetX, 0.01f * _fractal.zoom);
         ImGui::DragFloat("Offset Y", &_fractal.offsetY, 0.01f * _fractal.zoom);
