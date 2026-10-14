@@ -34,20 +34,16 @@ void ComputePipeline::createDescriptorPool()
 
 void ComputePipeline::createDescriptorLayout()
 {
-    std::array<vk::DescriptorSetLayoutBinding, 2> bindings{
-        {{.binding         = 0,
-          .descriptorType  = vk::DescriptorType::eStorageImage,
-          .descriptorCount = 1,
-          .stageFlags      = vk::ShaderStageFlagBits::eCompute},
-         {.binding         = 1,
-          .descriptorType  = vk::DescriptorType::eStorageBuffer,
-          .descriptorCount = 1,
-          .stageFlags      = vk::ShaderStageFlagBits::eCompute}}
+    vk::DescriptorSetLayoutBinding bindings{
+        .binding         = 0,
+        .descriptorType  = vk::DescriptorType::eStorageImage,
+        .descriptorCount = 1,
+        .stageFlags      = vk::ShaderStageFlagBits::eCompute
     };
 
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
-        .bindingCount = bindings.size(), //
-        .pBindings    = bindings.data()  //
+        .bindingCount = 1,        //
+        .pBindings    = &bindings //
     };
     _descriptorSetLayout = vk::raii::DescriptorSetLayout(_vulkanCore.getDevice(), layoutInfo);
 }
@@ -133,11 +129,6 @@ void ComputePipeline::bind(CommandQueue& commandQueue)
     // --- Bind Descriptor Set --- //
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, _pipelineLayout, 0, *_descriptorSet, nullptr);
-
-    // --- Push Constants --- //
-    // commandBuffer.pushConstants(
-    //     _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(_fractalSettings), &_fractalSettings
-    // );
 }
 
 ////////////////////////////////////////////////////////////

@@ -1,4 +1,5 @@
 #include "Fracture.hpp"
+#include "backend/CPUBackend.hpp"
 #include "backend/GPUBackend.hpp"
 #include "vulkan/VulkanCore.hpp"
 
@@ -8,7 +9,8 @@ Fracture::Fracture()
     : _ui(_fractal),
       _vulkanCore(&_window),
       _renderer(_vulkanCore, &_window),
-      _backend(std::make_unique<GPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImage()))
+      //   _backend(std::make_unique<GPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImage()))
+      _backend(std::make_unique<CPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImage()))
 {
 }
 

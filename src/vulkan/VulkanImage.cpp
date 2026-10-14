@@ -24,14 +24,15 @@ void VulkanImage::createComputeImage()
 
     /* ==================== CREATE IMAGE ==================== */
     vk::ImageCreateInfo imageInfo{
-        .imageType     = vk::ImageType::e2D,
-        .format        = format,
-        .extent        = {_extent.width, _extent.height, 1},
-        .mipLevels     = 1,
-        .arrayLayers   = 1,
-        .samples       = vk::SampleCountFlagBits::e1,
-        .tiling        = vk::ImageTiling::eOptimal,
-        .usage         = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
+        .imageType   = vk::ImageType::e2D,
+        .format      = format,
+        .extent      = {_extent.width, _extent.height, 1},
+        .mipLevels   = 1,
+        .arrayLayers = 1,
+        .samples     = vk::SampleCountFlagBits::e1,
+        .tiling      = vk::ImageTiling::eOptimal,
+        .usage =
+            vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
         .sharingMode   = vk::SharingMode::eExclusive,
         .initialLayout = vk::ImageLayout::eUndefined
     };
