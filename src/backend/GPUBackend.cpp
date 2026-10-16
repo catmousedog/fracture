@@ -1,5 +1,6 @@
 #include "GPUBackend.hpp"
 
+#include "util/Log.hpp"
 #include "util/Vulkan.hpp"
 #include "vulkan/VulkanImage.hpp"
 
@@ -11,12 +12,38 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Vulka
       _computePipeline(_vulkanCore, vulkanImage)
 {
     _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
+
+    _queryPool = vk::raii::QueryPool(
+        _vulkanCore.getDevice(),
+        vk::QueryPoolCreateInfo{
+            .queryType  = vk::QueryType::eTimestamp,
+            .queryCount = 2 * _commandQueue.getFramesInFlight(), // start + end per frame-in-flight
+        }
+    );
+    _timestampPeriod = _vulkanCore.getPhysicalDevice().getProperties().limits.timestampPeriod;
+    _queryReset.resize(_commandQueue.getFramesInFlight(), false);
 }
 
 ////////////////////////////////////////////////////////////
 
 void GPUBackend::recompute()
 {
+    vk::raii::CommandBuffer& commandBuffer = _commandQueue.getCommandBuffer();
+    uint32_t                 frameIndex    = _commandQueue.getFrameIndex();
+    uint32_t                 startQuery    = 2 * frameIndex;
+    commandBuffer.resetQueryPool(_queryPool, startQuery, 2);
+
+    if (_queryReset[frameIndex])
+    {
+        auto [result, ticks] = _queryPool.getResults<uint64_t>(
+            startQuery, 2, 2 * sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::e64
+        );
+        if (result != vk::Result::eSuccess)
+            FATAL("QueryPool::getResults returned {}", vk::to_string(result));
+
+        _stats.ns = (ticks[1] - ticks[0]) * _timestampPeriod;
+    }
+
     // --- Transition to General --- //
     util::transitionImageLayout(
         _commandQueue.getCommandBuffer(),
@@ -40,7 +67,9 @@ void GPUBackend::recompute()
     auto     extent = _computePipeline.getImage().getExtent();
     uint32_t groupX = (extent.width + 15) / 16;
     uint32_t groupY = (extent.height + 15) / 16;
+    commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery);
     _commandQueue.dispatch(groupX, groupY, 1);
+    commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery + 1);
 
     // --- Transition to ShaderReadOnlyOptimal --- //
     util::transitionImageLayout(
@@ -55,6 +84,9 @@ void GPUBackend::recompute()
             .image         = _computePipeline.getImage().getComputeImage(),
         }
     );
+
+    // this query will be recorded and reset in the next frame
+    _queryReset[frameIndex] = true;
 }
 
 ////////////////////////////////////////////////////////////

@@ -1,7 +1,10 @@
 #include "UI.hpp"
 
+#include "util/Time.hpp"
+
 #include "imgui.h"
 
+#include <chrono>
 #include <utility>
 #include <vector>
 
@@ -19,15 +22,14 @@ constexpr ImVec4 bgColorHighlight   = ImVec4(.2f, .2f, .3f, 1.f);
 
 ////////////////////////////////////////////////////////////
 
-UI::UI(Fractal& fractal, Backend::Type& backendType)
-    : _fractal(fractal),
-      _backendType(backendType)
+UI::UI(Fractal& fractal)
+    : _fractal(fractal)
 {
 }
 
 ////////////////////////////////////////////////////////////
 
-void UI::draw()
+void UI::draw(Backend::Type& type, const Backend::Stats& stats)
 {
     auto [width, height] = ImGui::GetIO().DisplaySize;
 
@@ -82,9 +84,13 @@ void UI::draw()
         ImGui::Separator();
 
         std::vector<const char*> items   = {"GPU", "CPU"}; // WIP: reflection
-        int                      current = std::to_underlying(_backendType);
+        int                      current = std::to_underlying(type);
         if (ImGui::ListBox("Backend", &current, items.data(), items.size(), 2))
-            _backendType = static_cast<Backend::Type>(current);
+            type = static_cast<Backend::Type>(current);
+
+        // Log::
+        auto ns = std::chrono::nanoseconds{(long long)stats.ns};
+        ImGui::Text("ns: %s", Time::formatTime<std::chrono::microseconds>(ns).c_str());
 
         ImGui::DragFloat("Offset X", &_fractal.offsetX, 0.01f * _fractal.zoom);
         ImGui::DragFloat("Offset Y", &_fractal.offsetY, 0.01f * _fractal.zoom);

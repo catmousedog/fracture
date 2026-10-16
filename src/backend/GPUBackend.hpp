@@ -38,4 +38,9 @@ class GPUBackend : public Backend
     CommandQueue& _commandQueue;
 
     ComputePipeline _computePipeline;
+
+    vk::raii::QueryPool _queryPool = nullptr;
+    float               _timestampPeriod; // ns per timestamp period
+
+    vector<bool> _queryReset;
 };

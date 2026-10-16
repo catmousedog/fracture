@@ -69,6 +69,8 @@ VulkanCore::VulkanCore(Window* window)
 
     // Sync objects
     createSyncObjects();
+
+    logInfo();
 }
 
 ////////////////////////////////////////////////////////////
@@ -208,6 +210,9 @@ void VulkanCore::createLogicalDevice()
     }
     if (_familyIndex == UINT32_MAX)
         FATAL("No graphics+present+compute queue family found");
+
+    if (queueFamilies[_familyIndex].timestampValidBits < 64)
+        FATAL("Queue family does not support 64-bit timestamps");
 
     // --- Create graphics queue --- //
     float                     priority = 1.0f;
@@ -372,7 +377,7 @@ void VulkanCore::logInfo()
         // get device properties
         const auto& deviceProperties = physicalDevice.getProperties();
         string      name             = deviceProperties.deviceName;
-        Log::info_t(1, "{}{}", Log::Color::Bold, name);
+        Log::info_t(1, "{}", name);
 
         // --- Limits ---
         const auto& limits = deviceProperties.limits;

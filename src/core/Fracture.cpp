@@ -8,8 +8,9 @@
 Fracture::Fracture()
     : _vulkanCore(&_window),
       _renderer(_vulkanCore, &_window),
-      _ui(_fractal, _backendType)
+      _ui(_fractal)
 {
+    _backendType = _prevBackendType = Backend::Type::GPU;
     switchBackend();
 }
 
@@ -24,11 +25,11 @@ void Fracture::mainLoop()
         Window::Input input = _window.consumeInput();
         updateFractal(input);
 
-        _renderer.beginUIFrame();       // prepare ImGui
-        _ui.draw();                     // create widgets
-        updateBackend();                // WIP: backend switching
-        _backend->setFractal(_fractal); // flag backend to recompute if needed
-        _renderer.draw(*_backend);      // record graphics and ImGui (recompute if flagged)
+        _renderer.beginUIFrame();                     // prepare ImGui
+        _ui.draw(_backendType, _backend->getStats()); // create widgets
+        updateBackend();                              // WIP: backend switching
+        _backend->setFractal(_fractal);               // flag backend to recompute if needed
+        _renderer.draw(*_backend);                    // record graphics and ImGui (recompute if flagged)
     }
 }
 

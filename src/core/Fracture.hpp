@@ -38,7 +38,7 @@ class Fracture
     Renderer _renderer;
 
     // backend to calculate fractal outputs
-    Backend::Type            _backendType = Backend::Type::GPU, _prevBackendType = _backendType;
+    Backend::Type            _backendType, _prevBackendType;
     std::unique_ptr<Backend> _backend;
 
     // UI is agnostic to renderer or fractal

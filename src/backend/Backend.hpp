@@ -12,11 +12,18 @@ class Backend
         CPU = 1
     };
 
+    struct Stats
+    {
+        double ns = 0;
+    };
+
     /* ======================== SETUP ======================= */
 
-    Backend() = default;
-
-    virtual ~Backend() = default;
+    Backend()                          = default;
+    virtual ~Backend()                 = default;
+    Backend(const Backend&)            = delete;
+    Backend(Backend&&)                 = delete;
+    Backend& operator=(const Backend&) = delete;
 
     /* ================== PUBLIC FUNCTIONS ================== */
 
@@ -24,7 +31,7 @@ class Backend
 
     void resize();
 
-    /* ================== VIRTUAL FUNCTIONS ================= */
+    /* ================== HELPER FUNCTIONS ================= */
   private:
     virtual void recompute() = 0;
 
@@ -34,10 +41,16 @@ class Backend
   public:
     void setFractal(const Fractal& fractal);
 
+    const Stats& getStats() const
+    {
+        return _stats;
+    }
+
     /* ====================== VARIABLES ===================== */
 
   protected:
     Fractal _fractal;
+    Stats   _stats;
 
   private:
     bool _dirty = true;

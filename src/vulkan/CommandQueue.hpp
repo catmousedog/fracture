@@ -60,6 +60,14 @@ class CommandQueue
     {
         return _frameWorkers[_frameIndex].presentCompleteSemaphore;
     }
+    uint32_t getFramesInFlight()
+    {
+        return _framesInFlight;
+    }
+    uint32_t getFrameIndex()
+    {
+        return _frameIndex;
+    }
 
     /* ====================== VARIABLES ===================== */
   private:
