@@ -3,9 +3,9 @@
 
 ////////////////////////////////////////////////////////////
 
-GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image, uint32_t framesInFlight)
+GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images, uint32_t framesInFlight)
     : _vulkanCore(vulkanCore),
-      _image(image),
+      _images(images),
       _framesInFlight(framesInFlight)
 {
     createDescriptorPool();
@@ -22,14 +22,14 @@ void GraphicsPipeline::createDescriptorPool()
 {
     // --- Pool Sizes --- //
     std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
-        {.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = _framesInFlight},
-        {.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = _framesInFlight},
+        {.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 2 * _framesInFlight},
+        {.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = 2 * _framesInFlight},
     }};
 
     // --- Create Descriptor Pool --- //
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets       = _framesInFlight,
+        .maxSets       = 2 * _framesInFlight,
         .poolSizeCount = poolSizes.size(),
         .pPoolSizes    = poolSizes.data()
     };
@@ -65,7 +65,7 @@ void GraphicsPipeline::createDescriptorLayout()
 void GraphicsPipeline::createDescriptorSet()
 {
     // --- Allocate Descriptor Sets --- //
-    std::vector<vk::DescriptorSetLayout> layouts(_framesInFlight, *_descriptorSetLayout);
+    std::vector<vk::DescriptorSetLayout> layouts(2 * _framesInFlight, *_descriptorSetLayout);
     vk::DescriptorSetAllocateInfo        allocInfo{
         .descriptorPool     = _descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
@@ -171,15 +171,16 @@ void GraphicsPipeline::createPipeline()
 void GraphicsPipeline::createUniformBuffers()
 {
     _uniformBuffers.resize(_framesInFlight);
-    for (uint32_t i = 0; i < _framesInFlight; ++i)
+
+    for (uint32_t fr = 0; fr < _framesInFlight; fr++)
     {
-        std::tie(_uniformBuffers[i].buffer, _uniformBuffers[i].memory) = _vulkanCore.createBuffer(
+        std::tie(_uniformBuffers[fr].buffer, _uniformBuffers[fr].memory) = _vulkanCore.createBuffer(
             sizeof(UniformBufferObject),
             vk::BufferUsageFlagBits::eUniformBuffer,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
         );
 
-        _uniformBuffers[i].mapped = _uniformBuffers[i].memory.mapMemory(0, sizeof(UniformBufferObject));
+        _uniformBuffers[fr].mapped = _uniformBuffers[fr].memory.mapMemory(0, sizeof(UniformBufferObject));
     }
 }
 
@@ -187,32 +188,37 @@ void GraphicsPipeline::createUniformBuffers()
 
 void GraphicsPipeline::updateDescriptorSet()
 {
-    for (uint32_t i = 0; i < _framesInFlight; ++i)
+    for (uint32_t im = 0; im < _images.size(); im++)
     {
-        vk::DescriptorImageInfo imageInfo{
-            .sampler     = _image.getSampler(),                    //
-            .imageView   = _image.getComputeImageView(),           //
-            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal //
-        };
-        vk::DescriptorBufferInfo bufferInfo{
-            .buffer = _uniformBuffers[i].buffer, .offset = 0, .range = sizeof(UniformBufferObject)
-        };
+        for (uint32_t fr = 0; fr < _framesInFlight; fr++)
+        {
+            uint32_t index = imageIndex(im, fr);
 
-        std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
-            {{.dstSet          = _descriptorSets[i],
-              .dstBinding      = 0,
-              .dstArrayElement = 0,
-              .descriptorCount = 1,
-              .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
-              .pImageInfo      = &imageInfo},
-             {.dstSet          = _descriptorSets[i],
-              .dstBinding      = 1,
-              .dstArrayElement = 0,
-              .descriptorCount = 1,
-              .descriptorType  = vk::DescriptorType::eUniformBuffer,
-              .pBufferInfo     = &bufferInfo}}
-        };
-        _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
+            vk::DescriptorImageInfo imageInfo{
+                .sampler     = _images[im].getSampler(),               //
+                .imageView   = _images[im].getComputeImageView(),      //
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal //
+            };
+            vk::DescriptorBufferInfo bufferInfo{
+                .buffer = _uniformBuffers[fr].buffer, .offset = 0, .range = sizeof(UniformBufferObject)
+            };
+
+            std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
+                {{.dstSet          = _descriptorSets[index],
+                  .dstBinding      = 0,
+                  .dstArrayElement = 0,
+                  .descriptorCount = 1,
+                  .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+                  .pImageInfo      = &imageInfo},
+                 {.dstSet          = _descriptorSets[index],
+                  .dstBinding      = 1,
+                  .dstArrayElement = 0,
+                  .descriptorCount = 1,
+                  .descriptorType  = vk::DescriptorType::eUniformBuffer,
+                  .pBufferInfo     = &bufferInfo}}
+            };
+            _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
+        }
     }
 }
 
@@ -231,9 +237,11 @@ void GraphicsPipeline::bind(CommandQueue& commandQueue)
 {
     auto& commandBuffer = commandQueue.getCommandBuffer();
 
+    uint32_t index = imageIndex(_images.frontIndex(), commandQueue.getFrameIndex());
+
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
     commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSets[commandQueue.getFrameIndex()], nullptr
+        vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSets[index], nullptr
     );
 }
 

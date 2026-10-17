@@ -22,8 +22,8 @@ Renderer::Renderer(VulkanCore& vulkanCore, Window* window)
       _vulkanCore(vulkanCore),
       _commandQueue(_vulkanCore, FRAMES_IN_FLIGHT),
       _vertexBuffer(_vulkanCore, _commandQueue),
-      _vulkanImage(_vulkanCore, _commandQueue),
-      _graphicsPipeline(_vulkanCore, _vulkanImage, FRAMES_IN_FLIGHT)
+      _vulkanImages(_vulkanCore, _commandQueue),
+      _graphicsPipeline(_vulkanCore, _vulkanImages, FRAMES_IN_FLIGHT)
 {
     initUI();
 }
@@ -138,7 +138,7 @@ void Renderer::record(uint32_t imageIndex, Backend& backend)
     const Fractal& curr = settings.fractal;
     const Fractal& prev = lastCompute.fractal;
 
-    auto                                  extent = _vulkanImage.getExtent();
+    auto                                  extent = _vulkanImages.front().getExtent();
     GraphicsPipeline::UniformBufferObject ubo{
         .offset     = {curr.offsetX, curr.offsetY},
         .prevOffset = {prev.offsetX, prev.offsetY},
@@ -187,7 +187,8 @@ void Renderer::resize(Backend& backend)
     _vulkanCore.recreateSwapchain();
 
     // recreate image (reassign)
-    _vulkanImage.recreateComputeImage();
+    for (auto& image : _vulkanImages)
+        image.recreateComputeImage();
 
     // update descriptor sets (reassign)
     _graphicsPipeline.updateDescriptorSet();

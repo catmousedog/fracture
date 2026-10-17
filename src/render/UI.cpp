@@ -85,9 +85,9 @@ void UI::draw(const Backend::Stats& stats)
         // --- Backend Settings --- //
         ImGui::Text("Backend Settings");
         ImGui::Separator();
-        std::vector<const char*> items   = {"GPU", "CPU"}; // WIP: reflection
+        std::vector<const char*> items   = {"GPU"}; // WIP: reflection
         int                      current = std::to_underlying(_settings.backendType);
-        if (ImGui::ListBox("Backend", &current, items.data(), items.size(), 2))
+        if (ImGui::ListBox("Backend", &current, items.data(), items.size(), 1))
             _settings.backendType = static_cast<Backend::Type>(current);
 
         int scale = _settings.scale;

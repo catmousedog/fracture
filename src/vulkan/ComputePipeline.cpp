@@ -2,9 +2,9 @@
 
 ////////////////////////////////////////////////////////////
 
-ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image)
+ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images)
     : _vulkanCore(vulkanCore),
-      _image(image)
+      _images(images)
 {
     createDescriptorPool();
     createDescriptorLayout();
@@ -16,16 +16,16 @@ ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image)
 
 void ComputePipeline::createDescriptorPool()
 {
-    std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
-        {vk::DescriptorType::eStorageImage, 1}, //
-        {vk::DescriptorType::eStorageBuffer, 1} //
-    }};
+    vk::DescriptorPoolSize poolSize = {
+        .type            = vk::DescriptorType::eStorageImage, //
+        .descriptorCount = 2                                  //
+    };
 
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets       = 2,
-        .poolSizeCount = poolSizes.size(),
-        .pPoolSizes    = poolSizes.data()
+        .poolSizeCount = 1,
+        .pPoolSizes    = &poolSize
     };
     _descriptorPool = _vulkanCore.getDevice().createDescriptorPool(poolInfo);
 }
@@ -52,13 +52,13 @@ void ComputePipeline::createDescriptorLayout()
 
 void ComputePipeline::createDescriptorSet()
 {
-    // --- Allocate Descriptor --- //
-    vk::DescriptorSetAllocateInfo allocInfo{
-        .descriptorPool     = _descriptorPool,       //
-        .descriptorSetCount = 1,                     //
-        .pSetLayouts        = &*_descriptorSetLayout //
+    std::vector<vk::DescriptorSetLayout> layouts(2, *_descriptorSetLayout);
+    vk::DescriptorSetAllocateInfo        allocInfo{
+        .descriptorPool     = _descriptorPool,
+        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+        .pSetLayouts        = layouts.data()
     };
-    _descriptorSet = std::move(_vulkanCore.getDevice().allocateDescriptorSets(allocInfo).front());
+    _descriptorSet = _vulkanCore.getDevice().allocateDescriptorSets(allocInfo);
 
     // --- Update Allocated Descriptor --- //
     updateDescriptorSet();
@@ -106,18 +106,21 @@ void ComputePipeline::updatePipeline(uint32_t pushConstantSize)
 
 void ComputePipeline::updateDescriptorSet()
 {
-    vk::DescriptorImageInfo imageInfo{
-        .imageView   = _image.getComputeImageView(), //
-        .imageLayout = vk::ImageLayout::eGeneral     //
-    };
-    vk::WriteDescriptorSet descriptorWrites{
-        .dstSet          = _descriptorSet,
-        .dstBinding      = 0,
-        .descriptorCount = 1,
-        .descriptorType  = vk::DescriptorType::eStorageImage,
-        .pImageInfo      = &imageInfo
-    };
-    _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
+    for (uint32_t i = 0; i < _images.size(); ++i)
+    {
+        vk::DescriptorImageInfo imageInfo{
+            .imageView   = _images[i].getComputeImageView(), //
+            .imageLayout = vk::ImageLayout::eGeneral         //
+        };
+        vk::WriteDescriptorSet descriptorWrites{
+            .dstSet          = _descriptorSet[i],
+            .dstBinding      = 0,
+            .descriptorCount = 1,
+            .descriptorType  = vk::DescriptorType::eStorageImage,
+            .pImageInfo      = &imageInfo
+        };
+        _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
+    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -128,7 +131,9 @@ void ComputePipeline::bind(CommandQueue& commandQueue)
 
     // --- Bind Descriptor Set --- //
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_pipeline);
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, _pipelineLayout, 0, *_descriptorSet, nullptr);
+    commandBuffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eCompute, _pipelineLayout, 0, *_descriptorSet[_images.backIndex()], nullptr
+    );
 }
 
 ////////////////////////////////////////////////////////////

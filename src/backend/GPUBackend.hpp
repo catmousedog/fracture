@@ -20,7 +20,7 @@ class GPUBackend : public Backend
 
     /* ======================== SETUP ======================= */
   public:
-    GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, VulkanImage& vulkanImage);
+    GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Swappable<VulkanImage>& vulkanImages);
 
     virtual ~GPUBackend() = default;
 
@@ -36,8 +36,9 @@ class GPUBackend : public Backend
 
     /* ====================== VARIABLES ===================== */
 
-    VulkanCore&   _vulkanCore;
-    CommandQueue& _commandQueue;
+    VulkanCore&             _vulkanCore;
+    CommandQueue&           _commandQueue;
+    Swappable<VulkanImage>& _vulkanImages;
 
     ComputePipeline _computePipeline;
 

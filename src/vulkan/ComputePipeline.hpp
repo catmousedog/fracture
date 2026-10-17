@@ -1,12 +1,13 @@
 #pragma once
 
+#include "util/Util.hpp"
 #include "vulkan/VulkanImage.hpp"
 
 class ComputePipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    ComputePipeline(VulkanCore& vulkanCore, VulkanImage& image);
+    ComputePipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images);
 
   private:
     void createDescriptorPool();
@@ -36,22 +37,19 @@ class ComputePipeline
 
     /* ================= GETTERS AND SETTERS ================ */
 
-    VulkanImage& getImage()
-    {
-        return _image;
-    }
+    Swappable<VulkanImage>& getImages() { return _images; }
 
     /* ====================== VARIABLES ===================== */
   private:
-    VulkanCore&  _vulkanCore;
-    VulkanImage& _image;
+    VulkanCore&             _vulkanCore;
+    Swappable<VulkanImage>& _images;
 
     vk::raii::PipelineLayout _pipelineLayout = nullptr;
     vk::raii::Pipeline       _pipeline       = nullptr;
 
-    vk::raii::DescriptorPool      _descriptorPool      = nullptr;
-    vk::raii::DescriptorSetLayout _descriptorSetLayout = nullptr;
-    vk::raii::DescriptorSet       _descriptorSet       = nullptr;
+    vk::raii::DescriptorPool             _descriptorPool      = nullptr;
+    vk::raii::DescriptorSetLayout        _descriptorSetLayout = nullptr;
+    std::vector<vk::raii::DescriptorSet> _descriptorSet       = {};
 
     vk::raii::ShaderModule _shader = nullptr;
 };

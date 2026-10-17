@@ -1,5 +1,6 @@
 #pragma once
 
+#include "util/Util.hpp"
 #include "vulkan/CommandQueue.hpp"
 
 class VulkanImage
@@ -18,22 +19,10 @@ class VulkanImage
     void createSampler();
 
     /* ================= GETTERS AND SETTERS ================ */
-    vk::raii::Image& getComputeImage()
-    {
-        return _computeImage;
-    }
-    vk::raii::ImageView& getComputeImageView()
-    {
-        return _computeImageView;
-    }
-    vk::raii::Sampler& getSampler()
-    {
-        return _sampler;
-    }
-    vk::Extent2D getExtent()
-    {
-        return _extent;
-    }
+    vk::raii::Image&     getComputeImage() { return _computeImage; }
+    vk::raii::ImageView& getComputeImageView() { return _computeImageView; }
+    vk::raii::Sampler&   getSampler() { return _sampler; }
+    vk::Extent2D         getExtent() { return _extent; }
 
     /* ====================== VARIABLES ===================== */
   private:

@@ -1,5 +1,4 @@
 #include "Fracture.hpp"
-#include "backend/CPUBackend.hpp"
 #include "backend/GPUBackend.hpp"
 #include "vulkan/VulkanCore.hpp"
 
@@ -77,10 +76,7 @@ void Fracture::switchBackend()
     switch (_settings.backendType)
     {
     case Backend::Type::GPU:
-        _backend = std::make_unique<GPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImage());
-        break;
-    case Backend::Type::CPU:
-        _backend = std::make_unique<CPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImage());
+        _backend = std::make_unique<GPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImages());
         break;
     }
 }

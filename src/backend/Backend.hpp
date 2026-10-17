@@ -11,8 +11,7 @@ class Backend
   public:
     enum class Type // WIP: better reflection?
     {
-        GPU = 0,
-        CPU = 1
+        GPU = 0
     };
 
     struct Settings

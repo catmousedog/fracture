@@ -1,6 +1,7 @@
 #pragma once
 
 #include "backend/Backend.hpp"
+#include "util/Util.hpp"
 #include "vulkan/CommandQueue.hpp"
 #include "vulkan/GraphicsPipeline.hpp"
 #include "vulkan/VertexBuffer.hpp"
@@ -33,26 +34,18 @@ class Renderer
 
     /* ================= GETTERS AND SETTERS ================ */
   public:
-    VulkanImage& getImage()
-    {
-        return _vulkanImage;
-    }
+    Swappable<VulkanImage>& getImages() { return _vulkanImages; }
 
-    CommandQueue& getCommandQueue()
-    {
-        return _commandQueue;
-    }
+    CommandQueue& getCommandQueue() { return _commandQueue; }
 
     /* ====================== VARIABLES ===================== */
   private:
-    Window* _window = nullptr;
-
-    // --- Vulkan --- //
-    VulkanCore&      _vulkanCore;
-    CommandQueue     _commandQueue;
-    VulkanImage      _vulkanImage;
-    VertexBuffer     _vertexBuffer;
-    GraphicsPipeline _graphicsPipeline;
+    Window*                _window = nullptr;
+    VulkanCore&            _vulkanCore;
+    CommandQueue           _commandQueue;
+    Swappable<VulkanImage> _vulkanImages;
+    VertexBuffer           _vertexBuffer;
+    GraphicsPipeline       _graphicsPipeline;
 
     vk::raii::DescriptorPool _uiDescriptorPool = nullptr;
 };

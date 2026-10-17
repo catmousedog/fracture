@@ -1,5 +1,6 @@
 #pragma once
 
+#include "util/Util.hpp"
 #include "vulkan/VulkanImage.hpp"
 
 #include <glm/glm.hpp>
@@ -18,8 +19,17 @@ class GraphicsPipeline
 
     /* ======================== SETUP ======================= */
   public:
-    GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image, uint32_t framesInFlight);
+    GraphicsPipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images, uint32_t framesInFlight);
 
+    /* ================== PUBLIC FUNCTIONS ================== */
+
+    void updateDescriptorSet();
+
+    void updateUniformBuffer(const CommandQueue& commandQueue, const UniformBufferObject&);
+
+    void bind(CommandQueue& commandQueue);
+
+    /* ================== HELPER FUNCTIONS ================== */
   private:
     void createDescriptorPool();
 
@@ -31,17 +41,12 @@ class GraphicsPipeline
 
     void createUniformBuffers();
 
-  public:
-    void updateDescriptorSet();
-
-    void updateUniformBuffer(const CommandQueue& commandQueue, const UniformBufferObject&);
-
-    void bind(CommandQueue& commandQueue);
+    uint32_t imageIndex(uint32_t image, uint32_t frame) const { return image * _framesInFlight + frame; }
 
     /* ====================== VARIABLES ===================== */
-  private:
-    VulkanCore&  _vulkanCore;
-    VulkanImage& _image;
+
+    VulkanCore&             _vulkanCore;
+    Swappable<VulkanImage>& _images;
 
     uint32_t _framesInFlight;
 

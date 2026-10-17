@@ -6,10 +6,11 @@
 
 ////////////////////////////////////////////////////////////
 
-GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, VulkanImage& vulkanImage)
+GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Swappable<VulkanImage>& vulkanImages)
     : _vulkanCore(vulkanCore),
       _commandQueue(commandQueue),
-      _computePipeline(_vulkanCore, vulkanImage)
+      _vulkanImages(vulkanImages),
+      _computePipeline(_vulkanCore, vulkanImages)
 {
     _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
 
@@ -31,8 +32,10 @@ void GPUBackend::recompute()
     vk::raii::CommandBuffer& commandBuffer = _commandQueue.getCommandBuffer();
     uint32_t                 frameIndex    = _commandQueue.getFrameIndex();
     uint32_t                 startQuery    = 2 * frameIndex;
-    commandBuffer.resetQueryPool(_queryPool, startQuery, 2);
+    VulkanImage&             image         = _computePipeline.getImages().back();
 
+    // --- Reset (and read) Query --- //
+    commandBuffer.resetQueryPool(_queryPool, startQuery, 2);
     if (_queryReset[frameIndex])
     {
         auto [result, ticks] = _queryPool.getResults<uint64_t>(
@@ -54,12 +57,12 @@ void GPUBackend::recompute()
             .dstAccessMask = vk::AccessFlagBits2::eShaderWrite,
             .oldLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,
             .newLayout     = vk::ImageLayout::eGeneral,
-            .image         = _computePipeline.getImage().getComputeImage(),
+            .image         = image.getComputeImage(),
         }
     );
 
     // --- Store this compute --- // (Will have to be moved later to after the dispatch has finished)
-    auto extent  = _computePipeline.getImage().getExtent();
+    auto extent  = image.getExtent();
     _lastCompute = {
         .fractal    = _settings.fractal,                                                //
         .renderSize = {extent.width / _settings.scale, extent.height / _settings.scale} //
@@ -88,12 +91,15 @@ void GPUBackend::recompute()
             .dstAccessMask = vk::AccessFlagBits2::eShaderRead,
             .oldLayout     = vk::ImageLayout::eGeneral,
             .newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,
-            .image         = _computePipeline.getImage().getComputeImage(),
+            .image         = image.getComputeImage(),
         }
     );
 
     // this query will be recorded and reset in the next frame
     _queryReset[frameIndex] = true;
+
+    // swap images
+    _vulkanImages.swap();
 }
 
 ////////////////////////////////////////////////////////////
