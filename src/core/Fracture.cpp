@@ -21,7 +21,6 @@ void Fracture::mainLoop()
     while (!_window.shouldClose())
     {
         _window.pollEvents();
-
         Window::Input input = _window.consumeInput();
         updateFractal(input);
 

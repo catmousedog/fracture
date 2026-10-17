@@ -1,6 +1,6 @@
 set(TARGET window)
 
-file(GLOB_RECURSE SOURCES "*.cpp")
+file(GLOB SOURCES "*.cpp")
 add_library(${TARGET} 
 	${SOURCES}
 )

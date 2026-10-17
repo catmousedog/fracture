@@ -1,6 +1,6 @@
 set(TARGET ${PROJECT_NAME})
 
-file(GLOB_RECURSE SOURCES "*.cpp")
+file(GLOB SOURCES "*.cpp")
 add_executable(${TARGET}
 	${SOURCES}
 )

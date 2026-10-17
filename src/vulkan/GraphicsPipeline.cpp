@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////
 
 GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image)
-    : Pipeline(vulkanCore),
+    : _vulkanCore(vulkanCore),
       _image(image)
 {
     createDescriptorPool();

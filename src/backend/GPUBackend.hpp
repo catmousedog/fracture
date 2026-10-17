@@ -1,7 +1,7 @@
 #pragma once
 
 #include "backend/Backend.hpp"
-#include "vulkan/pipeline/ComputePipeline.hpp"
+#include "vulkan/ComputePipeline.hpp"
 
 #include <glm/glm.hpp>
 

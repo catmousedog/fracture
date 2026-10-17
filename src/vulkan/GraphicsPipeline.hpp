@@ -1,21 +1,31 @@
 #pragma once
 
-#include "vulkan/VulkanCore.hpp"
+#include "vulkan/VulkanImage.hpp"
 
-class Pipeline
+class GraphicsPipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    Pipeline(VulkanCore& vulkanCore)
-        : _vulkanCore(vulkanCore)
-    {
-    }
+    GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image);
 
-    virtual ~Pipeline() = default;
+  private:
+    void createDescriptorPool();
+
+    void createDescriptorLayout();
+
+    void createDescriptorSet();
+
+    void createPipeline();
+
+  public:
+    void updateDescriptorSet();
+
+    void bind(CommandQueue& commandQueue);
 
     /* ====================== VARIABLES ===================== */
-  protected:
-    VulkanCore& _vulkanCore;
+  private:
+    VulkanCore&  _vulkanCore;
+    VulkanImage& _image;
 
     vk::raii::PipelineLayout _pipelineLayout = nullptr;
     vk::raii::Pipeline       _pipeline       = nullptr;

@@ -2,10 +2,10 @@
 
 #include "backend/Backend.hpp"
 #include "vulkan/CommandQueue.hpp"
+#include "vulkan/GraphicsPipeline.hpp"
 #include "vulkan/VertexBuffer.hpp"
 #include "vulkan/VulkanCore.hpp"
 #include "vulkan/VulkanImage.hpp"
-#include "vulkan/pipeline/GraphicsPipeline.hpp"
 #include "window/Window.hpp"
 
 class Renderer
