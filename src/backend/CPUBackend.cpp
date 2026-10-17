@@ -92,6 +92,9 @@ void CPUBackend::recompute()
             );
         }
     );
+
+    // CPU ignores scale for now: always computes the full image
+    _lastCompute = {.fractal = _settings.fractal, .renderSize = {_image.width, _image.height}};
 }
 
 ////////////////////////////////////////////////////////////
@@ -110,22 +113,24 @@ void CPUBackend::fillImage()
     const float height = static_cast<float>(_image.height);
     const float aspect = width / height;
 
+    const Fractal& fractal = _settings.fractal;
+
     for (uint32_t y = 0; y < _image.height; y++)
     {
         for (uint32_t x = 0; x < _image.width; x++)
         {
-            // Pixel -> [-1, 1], aspect-corrected
-            float uvX = (static_cast<float>(x) / width) * 2.0f - 1.0f;
-            float uvY = (static_cast<float>(y) / height) * 2.0f - 1.0f;
+            // Pixel centre -> [-1, 1], aspect-corrected
+            float uvX = ((static_cast<float>(x) + 0.5f) / width) * 2.0f - 1.0f;
+            float uvY = ((static_cast<float>(y) + 0.5f) / height) * 2.0f - 1.0f;
             uvX *= aspect;
 
-            const float cX = _fractal.offsetX + uvX * _fractal.zoom;
-            const float cY = _fractal.offsetY + uvY * _fractal.zoom;
+            const float cX = fractal.offsetX + uvX * fractal.zoom;
+            const float cY = fractal.offsetY + uvY * fractal.zoom;
 
             float zX = 0.0f;
             float zY = 0.0f;
             int   i;
-            for (i = 0; i < _fractal.maxIter; i++)
+            for (i = 0; i < fractal.maxIter; i++)
             {
                 const float newX = zX * zX - zY * zY + cX;
                 const float newY = 2.0f * zX * zY + cY;
@@ -135,7 +140,7 @@ void CPUBackend::fillImage()
                     break;
             }
 
-            const uint8_t v = static_cast<uint8_t>(255.0f * i / _fractal.maxIter);
+            const uint8_t v = static_cast<uint8_t>(255.0f * i / fractal.maxIter);
 
             _image[x, y] = {v, v, v, 0xFF};
         }

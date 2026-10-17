@@ -14,13 +14,6 @@ GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image, u
     createUniformBuffers();
     updateDescriptorSet();
     createPipeline();
-
-    _uniformBuffersObjects.resize(_framesInFlight);
-    for (uint32_t i = 0; i < _framesInFlight; ++i)
-    {
-        _uniformBuffersObjects[i].offset = {0.1f, 0.0f};
-        _uniformBuffersObjects[i].zoom   = 0.5f;
-    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -226,10 +219,10 @@ void GraphicsPipeline::updateDescriptorSet()
 ////////////////////////////////////////////////////////////
 
 // WIP: still needs to accept changing UBO
-void GraphicsPipeline::updateUniformBuffer(const CommandQueue& commandQueue)
+void GraphicsPipeline::updateUniformBuffer(const CommandQueue& commandQueue, const UniformBufferObject& ubo)
 {
     uint32_t frameIndex = commandQueue.getFrameIndex();
-    std::memcpy(_uniformBuffers[frameIndex].mapped, &_uniformBuffersObjects[frameIndex], sizeof(UniformBufferObject));
+    std::memcpy(_uniformBuffers[frameIndex].mapped, &ubo, sizeof(UniformBufferObject));
 }
 
 ////////////////////////////////////////////////////////////

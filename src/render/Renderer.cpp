@@ -132,7 +132,22 @@ void Renderer::record(uint32_t imageIndex, Backend& backend)
     _vulkanCore.prepare(&_commandQueue, imageIndex); // Layout is ColorAttachmentOptimal
 
     // --- Update Uniform Buffer --- //
-    _graphicsPipeline.updateUniformBuffer(_commandQueue);
+    const auto& settings    = backend.getSettings();
+    const auto& lastCompute = backend.getLastCompute();
+
+    const Fractal& curr = settings.fractal;
+    const Fractal& prev = lastCompute.fractal;
+
+    auto                                  extent = _vulkanImage.getExtent();
+    GraphicsPipeline::UniformBufferObject ubo{
+        .offset     = {curr.offsetX, curr.offsetY},
+        .prevOffset = {prev.offsetX, prev.offsetY},
+        .zoom       = curr.zoom,
+        .prevZoom   = prev.zoom,
+        .renderSize = lastCompute.renderSize,
+        .aspect     = float(extent.width) / extent.height
+    };
+    _graphicsPipeline.updateUniformBuffer(_commandQueue, ubo);
 
     // --- Bind Pipeline --- //
     _graphicsPipeline.bind(_commandQueue);

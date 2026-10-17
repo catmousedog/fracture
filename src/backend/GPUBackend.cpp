@@ -58,15 +58,22 @@ void GPUBackend::recompute()
         }
     );
 
+    // --- Store this compute --- // (Will have to be moved later to after the dispatch has finished)
+    auto extent  = _computePipeline.getImage().getExtent();
+    _lastCompute = {
+        .fractal    = _settings.fractal,                                                //
+        .renderSize = {extent.width / _settings.scale, extent.height / _settings.scale} //
+    };
+    float aspect = static_cast<float>(extent.width) / extent.height;
+
     // --- Bind Pipeline --- //
-    Constants constants = makeConstants(_fractal);
+    Constants constants = makeConstants(_settings.fractal, _lastCompute.renderSize, aspect);
     _computePipeline.pushConstants(_commandQueue, constants);
     _computePipeline.bind(_commandQueue);
 
     // --- Execute --- //
-    auto     extent = _computePipeline.getImage().getExtent();
-    uint32_t groupX = (extent.width + 15) / 16;
-    uint32_t groupY = (extent.height + 15) / 16;
+    uint32_t groupX = (_lastCompute.renderSize.x + 15) / 16;
+    uint32_t groupY = (_lastCompute.renderSize.y + 15) / 16;
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery);
     _commandQueue.dispatch(groupX, groupY, 1);
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery + 1);
@@ -98,13 +105,15 @@ void GPUBackend::onResize()
 
 ////////////////////////////////////////////////////////////
 
-GPUBackend::Constants GPUBackend::makeConstants(const Fractal& fractal)
+GPUBackend::Constants GPUBackend::makeConstants(const Fractal& fractal, glm::uvec2 computeSize, float aspect)
 {
     Constants constants;
 
-    constants.offset  = glm::vec2(fractal.offsetX, fractal.offsetY);
-    constants.zoom    = fractal.zoom;
-    constants.maxIter = (int)fractal.maxIter;
+    constants.offset      = glm::vec2(fractal.offsetX, fractal.offsetY);
+    constants.zoom        = fractal.zoom;
+    constants.maxIter     = (int)fractal.maxIter;
+    constants.computeSize = computeSize;
+    constants.aspect      = aspect;
 
     return constants;
 }

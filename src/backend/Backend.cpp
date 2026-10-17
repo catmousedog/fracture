@@ -4,7 +4,7 @@
 
 void Backend::record()
 {
-    if (_dirty)
+    if (_dirty && !_settings.frozen)
     {
         recompute();
         _dirty = false;
@@ -21,12 +21,12 @@ void Backend::resize()
 
 ////////////////////////////////////////////////////////////
 
-void Backend::setFractal(const Fractal& fractal)
+void Backend::setSettings(const Settings& settings)
 {
-    if (fractal != _fractal)
+    if (settings != _settings)
     {
-        _fractal = fractal;
-        _dirty   = true;
+        _settings = settings;
+        _dirty    = true;
     }
 }
 

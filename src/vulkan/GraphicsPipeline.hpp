@@ -10,8 +10,10 @@ class GraphicsPipeline
   public:
     struct UniformBufferObject
     {
-        alignas(8) glm::vec2 offset;
-        alignas(4) float zoom;
+        alignas(8) glm::vec2 offset, prevOffset;
+        alignas(4) float zoom, prevZoom;
+        alignas(8) glm::uvec2 renderSize;
+        alignas(4) float aspect;
     };
 
     /* ======================== SETUP ======================= */
@@ -32,7 +34,7 @@ class GraphicsPipeline
   public:
     void updateDescriptorSet();
 
-    void updateUniformBuffer(const CommandQueue& commandQueue);
+    void updateUniformBuffer(const CommandQueue& commandQueue, const UniformBufferObject&);
 
     void bind(CommandQueue& commandQueue);
 
@@ -56,7 +58,6 @@ class GraphicsPipeline
         void*                  mapped = nullptr;
     };
     // one for each frame-in-flight
-    vector<UniformBuffer>           _uniformBuffers        = {};
-    vector<vk::raii::DescriptorSet> _descriptorSets        = {};
-    vector<UniformBufferObject>     _uniformBuffersObjects = {};
+    vector<UniformBuffer>           _uniformBuffers = {};
+    vector<vk::raii::DescriptorSet> _descriptorSets = {};
 };

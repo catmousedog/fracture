@@ -17,6 +17,7 @@ GLFWwindow* createWindow()
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHintString(GLFW_WAYLAND_APP_ID, "float"); // custom Hyprland rule
 
     return glfwCreateWindow(1280, 720, "fracture", nullptr, nullptr);
 }
@@ -93,6 +94,8 @@ void Window::keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int acti
     {
         if (key == GLFW_KEY_LEFT_CONTROL)
             window->_input.ctrl = true;
+        if (action == GLFW_PRESS && key == GLFW_KEY_W && (mods & GLFW_MOD_CONTROL))
+            glfwSetWindowShouldClose(glfwWindow, GLFW_TRUE);
     }
     else if (action == GLFW_RELEASE)
     {

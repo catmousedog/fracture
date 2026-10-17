@@ -2,6 +2,9 @@
 
 #include "fractals/Fractal.hpp"
 
+#include <cstdint>
+#include <glm/glm.hpp>
+
 class Backend
 {
     /* ==================== NESTED CLASS ==================== */
@@ -12,9 +15,25 @@ class Backend
         CPU = 1
     };
 
+    struct Settings
+    {
+        Fractal  fractal;
+        Type     backendType = Type::GPU;
+        uint32_t scale       = 1;
+        bool     frozen      = false;
+
+        bool operator==(const Settings& other) const = default;
+    };
+
+    struct LastCompute
+    {
+        Fractal    fractal;
+        glm::uvec2 renderSize = {0, 0};
+    };
+
     struct Stats
     {
-        double ns = 0;
+        double ns = 0; // nanoseconds of previous compute
     };
 
     /* ======================== SETUP ======================= */
@@ -39,18 +58,20 @@ class Backend
 
     /* ================= GETTERS AND SETTERS ================ */
   public:
-    void setFractal(const Fractal& fractal);
+    void setSettings(const Settings& settings);
 
-    const Stats& getStats() const
-    {
-        return _stats;
-    }
+    const Settings& getSettings() const { return _settings; }
+
+    const LastCompute& getLastCompute() const { return _lastCompute; }
+
+    const Stats& getStats() const { return _stats; }
 
     /* ====================== VARIABLES ===================== */
 
   protected:
-    Fractal _fractal;
-    Stats   _stats;
+    Settings    _settings;    // current settings
+    LastCompute _lastCompute; // contents of the previously computed image
+    Stats       _stats;
 
   private:
     bool _dirty = true;

@@ -5,8 +5,28 @@
 
 class CPUBackend : public Backend
 {
-    /* ==================== NESTED CLASS ==================== */
+    /* ======================== SETUP ======================= */
+  public:
+    CPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, VulkanImage& vulkanImage);
+
+    virtual ~CPUBackend() = default;
+
+    /* ================== VIRTUAL FUNCTIONS ================= */
   private:
+    virtual void recompute() override;
+
+    virtual void onResize() override;
+
+    /* ================== HELPER FUNCTIONS ================== */
+
+    void fillImage();
+
+    /* ====================== VARIABLES ===================== */
+
+    VulkanCore&   _vulkanCore;
+    CommandQueue& _commandQueue;
+    VulkanImage&  _vulkanImage;
+
     struct Image
     {
         using Pixel = std::array<uint8_t, 4>;
@@ -39,28 +59,5 @@ class CPUBackend : public Backend
             return pixels[flatten(x, y)];
         }
     };
-
-    /* ======================== SETUP ======================= */
-  public:
-    CPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, VulkanImage& vulkanImage);
-
-    virtual ~CPUBackend() = default;
-
-    /* ================== VIRTUAL FUNCTIONS ================= */
-  private:
-    virtual void recompute() override;
-
-    virtual void onResize() override;
-
-    /* ================== HELPER FUNCTIONS ================== */
-
-    void fillImage();
-
-    /* ====================== VARIABLES ===================== */
-
-    VulkanCore&   _vulkanCore;
-    CommandQueue& _commandQueue;
-    VulkanImage&  _vulkanImage;
-
     Image _image;
 };

@@ -1,22 +1,21 @@
 #pragma once
 
 #include "backend/Backend.hpp"
-#include "fractals/Fractal.hpp"
 
 class UI
 {
   public:
-    UI(Fractal& fractal);
+    UI(Backend::Settings& settings);
 
     virtual ~UI() = default;
 
     /* ================== PUBLIC FUNCTIONS ================== */
   public:
-    void draw(Backend::Type& type, const Backend::Stats& stats);
+    void draw(const Backend::Stats& stats);
 
     /* ====================== VARIABLES ===================== */
   private:
-    Fractal& _fractal;
+    Backend::Settings& _settings;
 
     float _uiWidth   = 200.0f;
     bool  _collapsed = false;

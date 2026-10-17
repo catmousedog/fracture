@@ -230,17 +230,14 @@ void VulkanCore::createLogicalDevice()
         .ppEnabledExtensionNames = deviceExtensions
     };
 
-    auto features = _physicalDevice.getFeatures2().features;
-    if (!features.samplerAnisotropy)
-        FATAL("Device does not support anisotropic filtering!");
-    if (!features.shaderFloat64)
-        FATAL("Device does not support doubles in shaders!");
-    vk::PhysicalDeviceFeatures2 deviceFeatures2{
-        .features = {
-            .samplerAnisotropy = true, // anisotropic filtering
-            .shaderFloat64     = true  // doubles in shader
-        }
-    };
+    // auto features = _physicalDevice.getFeatures2().features;
+    // if (!features.shaderFloat64)
+    //     FATAL("Device does not support doubles in shaders!");
+    // vk::PhysicalDeviceFeatures2 deviceFeatures2{
+    //     .features = {
+    //         .shaderFloat64 = true // doubles in shader
+    //     }
+    // };
     vk::PhysicalDeviceVulkan13Features deviceFeatures13{
         .synchronization2 = true, // new API features
         .dynamicRendering = true  // dynamic rendering
@@ -251,12 +248,12 @@ void VulkanCore::createLogicalDevice()
 
     vk::StructureChain<
         vk::DeviceCreateInfo,
-        vk::PhysicalDeviceFeatures2,
+        // vk::PhysicalDeviceFeatures2,
         vk::PhysicalDeviceVulkan13Features,
         vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
         chain{
-            deviceInfo,                //
-            deviceFeatures2,           // anisotropic filtering
+            deviceInfo, //
+            // deviceFeatures2,           // 64-bit floats in shaders
             deviceFeatures13,          // new API features + dynamic rendering
             deviceFeaturesDynamicState // dynamic rendering
     };

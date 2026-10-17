@@ -8,9 +8,9 @@
 Fracture::Fracture()
     : _vulkanCore(&_window),
       _renderer(_vulkanCore, &_window),
-      _ui(_fractal)
+      _ui(_settings)
 {
-    _backendType = _prevBackendType = Backend::Type::GPU;
+    _prevBackendType = _settings.backendType = Backend::Type::GPU;
     switchBackend();
 }
 
@@ -24,12 +24,13 @@ void Fracture::mainLoop()
         Window::Input input = _window.consumeInput();
         updateFractal(input);
 
-        _renderer.beginUIFrame();                     // prepare ImGui
-        _ui.draw(_backendType, _backend->getStats()); // create widgets
-        updateBackend();                              // WIP: backend switching
-        _backend->setFractal(_fractal);               // flag backend to recompute if needed
-        _renderer.draw(*_backend);                    // record graphics and ImGui (recompute if flagged)
+        _renderer.beginUIFrame();         // prepare ImGui
+        _ui.draw(_backend->getStats());   // create widgets
+        updateBackend();                  // WIP: backend switching
+        _backend->setSettings(_settings); // flag backend to recompute if needed
+        _renderer.draw(*_backend);        // record graphics and ImGui (recompute if flagged)
     }
+    _vulkanCore.waitIdle();
 }
 
 ////////////////////////////////////////////////////////////
@@ -43,37 +44,37 @@ void Fracture::updateFractal(const Window::Input& input)
         if (input.ctrl)
         {
             float iterFactor = (input.scroll < 0) ? 1 / 1.1f : 1.1f;
-            _fractal.maxIter *= iterFactor;
-            _fractal.maxIter = std::max(_fractal.maxIter, 1.f);
+            _settings.fractal.maxIter *= iterFactor;
+            _settings.fractal.maxIter = std::max(_settings.fractal.maxIter, 1.f);
         }
         else
         {
             float zoomFactor = (input.scroll < 0) ? 1.1f : 1.f / 1.1f;
-            _fractal.zoom *= zoomFactor;
+            _settings.fractal.zoom *= zoomFactor;
         }
     }
     // DRAG
-    _fractal.offsetX -= input.dragX * _fractal.zoom;
-    _fractal.offsetY -= input.dragY * _fractal.zoom;
+    _settings.fractal.offsetX -= input.dragX * _settings.fractal.zoom;
+    _settings.fractal.offsetY -= input.dragY * _settings.fractal.zoom;
 }
 
 ////////////////////////////////////////////////////////////
 
 void Fracture::updateBackend()
 {
-    if (_backendType == _prevBackendType)
-        return;
-    _prevBackendType = _backendType;
-
-    _vulkanCore.waitIdle();
-    switchBackend();
+    if (_settings.backendType != _prevBackendType)
+    {
+        _prevBackendType = _settings.backendType;
+        _vulkanCore.waitIdle();
+        switchBackend();
+    }
 }
 
 ////////////////////////////////////////////////////////////
 
 void Fracture::switchBackend()
 {
-    switch (_backendType)
+    switch (_settings.backendType)
     {
     case Backend::Type::GPU:
         _backend = std::make_unique<GPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImage());

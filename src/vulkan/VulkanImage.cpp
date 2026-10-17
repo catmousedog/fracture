@@ -96,14 +96,14 @@ void VulkanImage::createSampler()
         .magFilter        = vk::Filter::eLinear,
         .minFilter        = vk::Filter::eLinear,
         .mipmapMode       = vk::SamplerMipmapMode::eLinear,
-        .addressModeU     = vk::SamplerAddressMode::eRepeat,
-        .addressModeV     = vk::SamplerAddressMode::eRepeat,
-        .addressModeW     = vk::SamplerAddressMode::eRepeat,
+        .addressModeU     = vk::SamplerAddressMode::eClampToBorder,
+        .addressModeV     = vk::SamplerAddressMode::eClampToBorder,
+        .addressModeW     = vk::SamplerAddressMode::eClampToBorder,
         .mipLodBias       = 0.0f,
-        .anisotropyEnable = vk::True,
-        .maxAnisotropy    = properties.limits.maxSamplerAnisotropy,
+        .anisotropyEnable = vk::False,
         .compareEnable    = vk::False,
-        .compareOp        = vk::CompareOp::eAlways
+        .compareOp        = vk::CompareOp::eAlways,
+        .borderColor      = vk::BorderColor::eFloatOpaqueBlack
     };
     _sampler = device.createSampler(samplerInfo);
 }
