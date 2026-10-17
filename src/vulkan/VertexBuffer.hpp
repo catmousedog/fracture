@@ -46,9 +46,6 @@ class VertexBuffer
   public:
     void draw(CommandQueue& commandQueue);
 
-    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
-    createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
-
     /* ====================== VARIABLES ===================== */
   private:
     VulkanCore&   _vulkanCore;

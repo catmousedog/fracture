@@ -23,7 +23,7 @@ Renderer::Renderer(VulkanCore& vulkanCore, Window* window)
       _commandQueue(_vulkanCore, FRAMES_IN_FLIGHT),
       _vertexBuffer(_vulkanCore, _commandQueue),
       _vulkanImage(_vulkanCore, _commandQueue),
-      _graphicsPipeline(_vulkanCore, _vulkanImage)
+      _graphicsPipeline(_vulkanCore, _vulkanImage, FRAMES_IN_FLIGHT)
 {
     initUI();
 }
@@ -125,19 +125,20 @@ void Renderer::record(uint32_t imageIndex, Backend& backend)
 {
     _commandQueue.begin();
 
-    // // --- Recompute --- //
+    // --- Recompute --- //
     backend.record();
 
     // --- Prepare and Begin Rendering --- //
     _vulkanCore.prepare(&_commandQueue, imageIndex); // Layout is ColorAttachmentOptimal
+
+    // --- Update Uniform Buffer --- //
+    _graphicsPipeline.updateUniformBuffer(_commandQueue);
 
     // --- Bind Pipeline --- //
     _graphicsPipeline.bind(_commandQueue);
 
     // --- Draw --- //
     _vertexBuffer.draw(_commandQueue);
-
-    // _ui.draw(); // UI SHOULD DRAW IN BETWEEN HERE SO SPLIT THIS FUNCTION
 
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *_commandQueue.getCommandBuffer());

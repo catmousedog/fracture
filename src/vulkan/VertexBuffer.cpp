@@ -25,7 +25,7 @@ void VertexBuffer::createVertexBuffer()
 {
     // --- Create Staging Buffer --- //
     vk::DeviceSize bufferSize                 = sizeof(_vertices[0]) * _vertices.size();
-    auto [stagingBuffer, stagingBufferMemory] = createBuffer(
+    auto [stagingBuffer, stagingBufferMemory] = _vulkanCore.createBuffer(
         bufferSize,
         vk::BufferUsageFlagBits::eTransferSrc,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
@@ -37,7 +37,7 @@ void VertexBuffer::createVertexBuffer()
     stagingBufferMemory.unmapMemory();
 
     // --- Create Vertex Buffer --- //
-    std::tie(_vertexBuffer, _vertexBufferMemory) = createBuffer(
+    std::tie(_vertexBuffer, _vertexBufferMemory) = _vulkanCore.createBuffer(
         bufferSize,
         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -56,7 +56,7 @@ void VertexBuffer::createIndexBuffer()
 {
     // --- Create Staging Buffer --- //
     vk::DeviceSize bufferSize                 = sizeof(_indices[0]) * _indices.size();
-    auto [stagingBuffer, stagingBufferMemory] = createBuffer(
+    auto [stagingBuffer, stagingBufferMemory] = _vulkanCore.createBuffer(
         bufferSize,
         vk::BufferUsageFlagBits::eTransferSrc,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
@@ -68,7 +68,7 @@ void VertexBuffer::createIndexBuffer()
     stagingBufferMemory.unmapMemory();
 
     // --- Create Index Buffer --- //
-    std::tie(_indexBuffer, _indexBufferMemory) = createBuffer(
+    std::tie(_indexBuffer, _indexBufferMemory) = _vulkanCore.createBuffer(
         bufferSize,
         vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -90,25 +90,6 @@ void VertexBuffer::draw(CommandQueue& commandQueue)
     commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
     commandBuffer.drawIndexed(static_cast<uint32_t>(_indices.size()), 1, 0, 0, 0);
-}
-
-////////////////////////////////////////////////////////////
-
-std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
-VertexBuffer::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties)
-{
-    auto& device = _vulkanCore.getDevice();
-
-    vk::BufferCreateInfo   bufferInfo{.size = size, .usage = usage, .sharingMode = vk::SharingMode::eExclusive};
-    vk::raii::Buffer       buffer          = vk::raii::Buffer(device, bufferInfo);
-    vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
-    vk::MemoryAllocateInfo allocInfo{
-        .allocationSize  = memRequirements.size,
-        .memoryTypeIndex = _vulkanCore.findMemoryType(memRequirements.memoryTypeBits, properties)
-    };
-    vk::raii::DeviceMemory bufferMemory = vk::raii::DeviceMemory(device, allocInfo);
-    buffer.bindMemory(*bufferMemory, 0);
-    return {std::move(buffer), std::move(bufferMemory)};
 }
 
 ////////////////////////////////////////////////////////////

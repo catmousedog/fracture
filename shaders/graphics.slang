@@ -1,3 +1,7 @@
+struct UniformBufferObject { float2 offset; float zoom; };
+[[vk::binding(0, 0)]] Sampler2D tex;
+[[vk::binding(1, 0)]] ConstantBuffer<UniformBufferObject> ubo;
+
 struct VSInput {
     float2 inPosition;
     float2 inTexCoord;
@@ -16,9 +20,7 @@ VSOutput vertMain(VSInput input) {
     return output;
 }
 
-Sampler2D tex;
-
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
-    return tex.Sample(vertIn.fragTexCoord);
+    return tex.Sample(vertIn.fragTexCoord + ubo.offset);
 }

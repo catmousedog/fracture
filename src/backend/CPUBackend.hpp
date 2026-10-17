@@ -56,9 +56,6 @@ class CPUBackend : public Backend
 
     void fillImage();
 
-    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
-    createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
-
     /* ====================== VARIABLES ===================== */
 
     VulkanCore&   _vulkanCore;

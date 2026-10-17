@@ -3,30 +3,42 @@
 
 ////////////////////////////////////////////////////////////
 
-GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image)
+GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& image, uint32_t framesInFlight)
     : _vulkanCore(vulkanCore),
-      _image(image)
+      _image(image),
+      _framesInFlight(framesInFlight)
 {
     createDescriptorPool();
     createDescriptorLayout();
     createDescriptorSet();
+    createUniformBuffers();
+    updateDescriptorSet();
     createPipeline();
+
+    _uniformBuffersObjects.resize(_framesInFlight);
+    for (uint32_t i = 0; i < _framesInFlight; ++i)
+    {
+        _uniformBuffersObjects[i].offset = {0.1f, 0.0f};
+        _uniformBuffersObjects[i].zoom   = 0.5f;
+    }
 }
 
 ////////////////////////////////////////////////////////////
 
 void GraphicsPipeline::createDescriptorPool()
 {
-    vk::DescriptorPoolSize poolSize{
-        .type            = vk::DescriptorType::eCombinedImageSampler, //
-        .descriptorCount = 1                                          //
-    };
+    // --- Pool Sizes --- //
+    std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
+        {.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = _framesInFlight},
+        {.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = _framesInFlight},
+    }};
 
+    // --- Create Descriptor Pool --- //
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets       = poolSize.descriptorCount,
-        .poolSizeCount = 1,
-        .pPoolSizes    = &poolSize
+        .maxSets       = _framesInFlight,
+        .poolSizeCount = poolSizes.size(),
+        .pPoolSizes    = poolSizes.data()
     };
     _descriptorPool = _vulkanCore.getDevice().createDescriptorPool(poolInfo);
 }
@@ -35,33 +47,38 @@ void GraphicsPipeline::createDescriptorPool()
 
 void GraphicsPipeline::createDescriptorLayout()
 {
-    vk::DescriptorSetLayoutBinding bindings{
-        .binding         = 0,
-        .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
-        .descriptorCount = 1,
-        .stageFlags      = vk::ShaderStageFlagBits::eFragment
+    // --- Bindings --- //
+    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {
+        {{.binding         = 0,
+          .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+          .descriptorCount = 1,
+          .stageFlags      = vk::ShaderStageFlagBits::eFragment},
+         {.binding         = 1,
+          .descriptorType  = vk::DescriptorType::eUniformBuffer,
+          .descriptorCount = 1,
+          .stageFlags      = vk::ShaderStageFlagBits::eFragment}}
     };
+
+    // --- Create Descriptor Set Layout --- //
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
-        .bindingCount = 1,        //
-        .pBindings    = &bindings //
+        .bindingCount = bindings.size(), //
+        .pBindings    = bindings.data()  //
     };
-    _descriptorSetLayout = vk::raii::DescriptorSetLayout(_vulkanCore.getDevice(), layoutInfo);
+    _descriptorSetLayout = _vulkanCore.getDevice().createDescriptorSetLayout(layoutInfo);
 }
 
 ////////////////////////////////////////////////////////////
 
 void GraphicsPipeline::createDescriptorSet()
 {
-    // --- Allocate Descriptor --- //
-    vk::DescriptorSetAllocateInfo allocInfo{
-        .descriptorPool     = _descriptorPool,       //
-        .descriptorSetCount = 1,                     //
-        .pSetLayouts        = &*_descriptorSetLayout //
+    // --- Allocate Descriptor Sets --- //
+    std::vector<vk::DescriptorSetLayout> layouts(_framesInFlight, *_descriptorSetLayout);
+    vk::DescriptorSetAllocateInfo        allocInfo{
+        .descriptorPool     = _descriptorPool,
+        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+        .pSetLayouts        = layouts.data()
     };
-    _descriptorSet = std::move(_vulkanCore.getDevice().allocateDescriptorSets(allocInfo).front());
-
-    // --- Update Allocated Descriptor --- //
-    updateDescriptorSet();
+    _descriptorSets = _vulkanCore.getDevice().allocateDescriptorSets(allocInfo);
 }
 
 ////////////////////////////////////////////////////////////
@@ -158,22 +175,61 @@ void GraphicsPipeline::createPipeline()
 
 ////////////////////////////////////////////////////////////
 
+void GraphicsPipeline::createUniformBuffers()
+{
+    _uniformBuffers.resize(_framesInFlight);
+    for (uint32_t i = 0; i < _framesInFlight; ++i)
+    {
+        std::tie(_uniformBuffers[i].buffer, _uniformBuffers[i].memory) = _vulkanCore.createBuffer(
+            sizeof(UniformBufferObject),
+            vk::BufferUsageFlagBits::eUniformBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+        );
+
+        _uniformBuffers[i].mapped = _uniformBuffers[i].memory.mapMemory(0, sizeof(UniformBufferObject));
+    }
+}
+
+////////////////////////////////////////////////////////////
+
 void GraphicsPipeline::updateDescriptorSet()
 {
-    vk::DescriptorImageInfo imageInfo{
-        .sampler     = _image.getSampler(),                    //
-        .imageView   = _image.getComputeImageView(),           //
-        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal //
-    };
-    vk::WriteDescriptorSet descriptorWrites{
-        .dstSet          = _descriptorSet,
-        .dstBinding      = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
-        .pImageInfo      = &imageInfo
-    };
-    _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
+    for (uint32_t i = 0; i < _framesInFlight; ++i)
+    {
+        vk::DescriptorImageInfo imageInfo{
+            .sampler     = _image.getSampler(),                    //
+            .imageView   = _image.getComputeImageView(),           //
+            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal //
+        };
+        vk::DescriptorBufferInfo bufferInfo{
+            .buffer = _uniformBuffers[i].buffer, .offset = 0, .range = sizeof(UniformBufferObject)
+        };
+
+        std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
+            {{.dstSet          = _descriptorSets[i],
+              .dstBinding      = 0,
+              .dstArrayElement = 0,
+              .descriptorCount = 1,
+              .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+              .pImageInfo      = &imageInfo},
+             {.dstSet          = _descriptorSets[i],
+              .dstBinding      = 1,
+              .dstArrayElement = 0,
+              .descriptorCount = 1,
+              .descriptorType  = vk::DescriptorType::eUniformBuffer,
+              .pBufferInfo     = &bufferInfo}}
+        };
+        _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+// WIP: still needs to accept changing UBO
+void GraphicsPipeline::updateUniformBuffer(const CommandQueue& commandQueue)
+{
+    uint32_t frameIndex = commandQueue.getFrameIndex();
+    std::memcpy(_uniformBuffers[frameIndex].mapped, &_uniformBuffersObjects[frameIndex], sizeof(UniformBufferObject));
 }
 
 ////////////////////////////////////////////////////////////
@@ -183,7 +239,9 @@ void GraphicsPipeline::bind(CommandQueue& commandQueue)
     auto& commandBuffer = commandQueue.getCommandBuffer();
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSet, nullptr);
+    commandBuffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSets[commandQueue.getFrameIndex()], nullptr
+    );
 }
 
 ////////////////////////////////////////////////////////////

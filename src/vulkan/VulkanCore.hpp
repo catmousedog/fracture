@@ -47,6 +47,9 @@ class VulkanCore
 
     vk::raii::ShaderModule readShader(string shaderName) const;
 
+    std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
+    createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+
     /* ================= GETTERS AND SETTERS ================ */
 
     Window* getWindow() const

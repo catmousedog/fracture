@@ -60,11 +60,11 @@ class CommandQueue
     {
         return _frameWorkers[_frameIndex].presentCompleteSemaphore;
     }
-    uint32_t getFramesInFlight()
+    uint32_t getFramesInFlight() const
     {
         return _framesInFlight;
     }
-    uint32_t getFrameIndex()
+    uint32_t getFrameIndex() const
     {
         return _frameIndex;
     }

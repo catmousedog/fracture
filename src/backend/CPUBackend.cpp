@@ -20,7 +20,7 @@ void CPUBackend::recompute()
 
     // --- Create Staging Buffer --- //
     vk::DeviceSize bufferSize                 = _image.size() * sizeof(Image::Pixel);
-    auto [stagingBuffer, stagingBufferMemory] = createBuffer(
+    auto [stagingBuffer, stagingBufferMemory] = _vulkanCore.createBuffer(
         bufferSize,
         vk::BufferUsageFlagBits::eTransferSrc,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
@@ -141,23 +141,4 @@ void CPUBackend::fillImage()
         }
     }
 }
-////////////////////////////////////////////////////////////
-
-std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
-CPUBackend::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties)
-{
-    auto& device = _vulkanCore.getDevice();
-
-    vk::BufferCreateInfo   bufferInfo{.size = size, .usage = usage, .sharingMode = vk::SharingMode::eExclusive};
-    vk::raii::Buffer       buffer          = vk::raii::Buffer(device, bufferInfo);
-    vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
-    vk::MemoryAllocateInfo allocInfo{
-        .allocationSize  = memRequirements.size,
-        .memoryTypeIndex = _vulkanCore.findMemoryType(memRequirements.memoryTypeBits, properties)
-    };
-    vk::raii::DeviceMemory bufferMemory = vk::raii::DeviceMemory(device, allocInfo);
-    buffer.bindMemory(*bufferMemory, 0);
-    return {std::move(buffer), std::move(bufferMemory)};
-}
-
 ////////////////////////////////////////////////////////////
