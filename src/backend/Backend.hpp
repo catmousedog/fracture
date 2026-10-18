@@ -2,6 +2,7 @@
 
 #include "fractals/Fractal.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <glm/glm.hpp>
 
@@ -22,12 +23,17 @@ class Backend
         bool     frozen      = false;
 
         bool operator==(const Settings& other) const = default;
+
+        glm::uvec2 computeSize(uint32_t width, uint32_t height) const
+        {
+            return {std::max(1u, width / scale), std::max(1u, height / scale)};
+        }
     };
 
     struct LastCompute
     {
         Fractal    fractal;
-        glm::uvec2 renderSize = {0, 0};
+        glm::uvec2 computeSize = {0, 0};
     };
 
     struct Stats

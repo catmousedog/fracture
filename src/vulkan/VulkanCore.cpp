@@ -458,7 +458,7 @@ void VulkanCore::logInfo()
 
 std::optional<uint32_t> VulkanCore::acquireNextImage(CommandQueue* commandQueue)
 {
-    auto [acquireResult, imageIndex] =
+    auto [acquireResult, swapChainIndex] =
         _swapchain.acquireNextImage(UINT64_MAX, *commandQueue->getPresentCompleteSemaphore(), nullptr);
 
     // if out-of-date, recreate swapchain
@@ -469,12 +469,12 @@ std::optional<uint32_t> VulkanCore::acquireNextImage(CommandQueue* commandQueue)
     else if (acquireResult != vk::Result::eSuccess)
         Log::error("vk::SwapchainKHR::acquireNextImage returned {}", vk::to_string(acquireResult));
 
-    return imageIndex;
+    return swapChainIndex;
 }
 
 ////////////////////////////////////////////////////////////
 
-void VulkanCore::prepare(CommandQueue* commandQueue, uint32_t imageIndex)
+void VulkanCore::prepare(CommandQueue* commandQueue, uint32_t swapChainIndex)
 {
     auto& commandBuffer = commandQueue->getCommandBuffer();
 
@@ -488,7 +488,7 @@ void VulkanCore::prepare(CommandQueue* commandQueue, uint32_t imageIndex)
             .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
             .oldLayout     = vk::ImageLayout::eUndefined,
             .newLayout     = vk::ImageLayout::eColorAttachmentOptimal,
-            .image         = _swapImages[imageIndex],
+            .image         = _swapImages[swapChainIndex],
         }
     );
 
@@ -509,7 +509,7 @@ void VulkanCore::prepare(CommandQueue* commandQueue, uint32_t imageIndex)
     // --- Clear Color Attachment --- //
     vk::ClearValue              clearColor     = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
     vk::RenderingAttachmentInfo attachmentInfo = {
-        .imageView   = _swapImageViews[imageIndex],
+        .imageView   = _swapImageViews[swapChainIndex],
         .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
         .loadOp      = vk::AttachmentLoadOp::eClear,
         .storeOp     = vk::AttachmentStoreOp::eStore,
@@ -528,14 +528,14 @@ void VulkanCore::prepare(CommandQueue* commandQueue, uint32_t imageIndex)
 
 ////////////////////////////////////////////////////////////
 
-bool VulkanCore::present(uint32_t imageIndex)
+bool VulkanCore::present(uint32_t swapChainIndex)
 {
     const vk::PresentInfoKHR presentInfoKHR{
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = &*_renderFinishedSemaphores[imageIndex], // wait for submitted command buffer
+        .pWaitSemaphores    = &*_renderFinishedSemaphores[swapChainIndex], // wait for submitted command buffer
         .swapchainCount     = 1,
         .pSwapchains        = &*_swapchain,
-        .pImageIndices      = &imageIndex
+        .pImageIndices      = &swapChainIndex
     };
     auto presentResult = _queue.presentKHR(presentInfoKHR);
 

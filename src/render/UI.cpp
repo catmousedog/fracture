@@ -4,9 +4,9 @@
 
 #include "imgui.h"
 
+#include <array>
 #include <chrono>
 #include <utility>
-#include <vector>
 
 ////////////////////////////////////////////////////////////
 
@@ -85,8 +85,8 @@ void UI::draw(const Backend::Stats& stats)
         // --- Backend Settings --- //
         ImGui::Text("Backend Settings");
         ImGui::Separator();
-        std::vector<const char*> items   = {"GPU"}; // WIP: reflection
-        int                      current = std::to_underlying(_settings.backendType);
+        constexpr std::array<const char*, 1> items   = {"GPU"}; // WIP: reflection
+        int                                  current = std::to_underlying(_settings.backendType);
         if (ImGui::ListBox("Backend", &current, items.data(), items.size(), 1))
             _settings.backendType = static_cast<Backend::Type>(current);
 
@@ -140,6 +140,13 @@ void UI::draw(const Backend::Stats& stats)
         ImGui::PopStyleColor(3);
         ImGui::End();
     }
+}
+
+////////////////////////////////////////////////////////////
+
+bool UI::captureMouse() const
+{
+    return ImGui::GetIO().WantCaptureMouse;
 }
 
 ////////////////////////////////////////////////////////////

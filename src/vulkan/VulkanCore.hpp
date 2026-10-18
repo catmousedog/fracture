@@ -35,9 +35,9 @@ class VulkanCore
 
     std::optional<uint32_t> acquireNextImage(class CommandQueue* commandQueue);
 
-    void prepare(class CommandQueue* commandQueue, uint32_t imageIndex);
+    void prepare(class CommandQueue* commandQueue, uint32_t swapChainIndex);
 
-    bool present(uint32_t imageIndex);
+    bool present(uint32_t swapChainIndex);
 
     void waitIdle();
 
@@ -61,9 +61,12 @@ class VulkanCore
     vk::raii::SwapchainKHR&   getSwapchain() { return _swapchain; }
     vk::Extent2D              getSwapChainExtent() const { return _swapChainExtent; }
     vk::SurfaceFormatKHR&     getSurfaceFormat() { return _surfaceFormat; }
-    vk::Image                 getSwapImage(uint32_t index) { return _swapImages[index]; }
+    vk::Image                 getSwapImage(uint32_t swapChainIndex) { return _swapImages[swapChainIndex]; }
     uint32_t                  getSwapImageCount() const { return _swapImageCount; }
-    vk::raii::Semaphore&      getRenderFinishedSemaphore(uint32_t index) { return _renderFinishedSemaphores[index]; }
+    vk::raii::Semaphore&      getRenderFinishedSemaphore(uint32_t swapChainIndex)
+    {
+        return _renderFinishedSemaphores[swapChainIndex];
+    }
 
     /* ====================== VARIABLES ===================== */
   private:

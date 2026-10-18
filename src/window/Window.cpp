@@ -3,9 +3,8 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
-#include "imgui.h"
-
 #include <GLFW/glfw3.h>
+#include <string_view>
 
 ////////////////////////////////////////////////////////////
 
@@ -28,22 +27,16 @@ GLFWwindow* createWindow()
 
 void Window::scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse)
-        return;
-
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
     window->_input.scroll += yoffset;
+    window->_input.ctrl = glfwGetKey(glfwWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+                          glfwGetKey(glfwWindow, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
 }
 
 ////////////////////////////////////////////////////////////
 
 void Window::mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action, int mods)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse)
-        return;
-
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
     if (button == GLFW_MOUSE_BUTTON_LEFT)
     {
@@ -63,11 +56,14 @@ void Window::mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action,
 
 void Window::cursorPosCallback(GLFWwindow* glfwWindow, double xpos, double ypos)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse)
-        return;
-
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+
+    int w, h;
+    glfwGetWindowSize(glfwWindow, &w, &h);
+
+    window->_input.mouseX = (2.0 * xpos - w) / static_cast<float>(h);  // [-aspect, aspect]
+    window->_input.mouseY = -(2.0 * ypos - h) / static_cast<float>(h); // [-1, 1], up is +
+
     if (window->_dragging)
     {
         double dx      = xpos - window->_lastX;
@@ -75,12 +71,8 @@ void Window::cursorPosCallback(GLFWwindow* glfwWindow, double xpos, double ypos)
         window->_lastX = xpos;
         window->_lastY = ypos;
 
-        int w, h;
-        glfwGetWindowSize(glfwWindow, &w, &h);
-        double height = h;
-
-        window->_input.dragX += 2 * dx / height;
-        window->_input.dragY += -2 * dy / height;
+        window->_input.dragX += 2 * dx / static_cast<float>(h);
+        window->_input.dragY += -2 * dy / static_cast<float>(h);
     }
 }
 
@@ -92,15 +84,9 @@ void Window::keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int acti
 
     if (action == GLFW_PRESS)
     {
-        if (key == GLFW_KEY_LEFT_CONTROL)
-            window->_input.ctrl = true;
-        if (action == GLFW_PRESS && key == GLFW_KEY_W && (mods & GLFW_MOD_CONTROL))
+        const char* name = glfwGetKeyName(key, scancode);
+        if (name && std::string_view(name) == "w" && (mods & GLFW_MOD_CONTROL))
             glfwSetWindowShouldClose(glfwWindow, GLFW_TRUE);
-    }
-    else if (action == GLFW_RELEASE)
-    {
-        if (key == GLFW_KEY_LEFT_CONTROL)
-            window->_input.ctrl = false;
     }
 }
 

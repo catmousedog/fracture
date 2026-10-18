@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util/Util.hpp"
+#include "util/Swappable.hpp"
 #include "vulkan/VulkanImage.hpp"
 
 #include <glm/glm.hpp>
@@ -13,7 +13,7 @@ class GraphicsPipeline
     {
         alignas(8) glm::vec2 offset, prevOffset;
         alignas(4) float zoom, prevZoom;
-        alignas(8) glm::uvec2 renderSize;
+        alignas(8) glm::uvec2 computeSize;
         alignas(4) float aspect;
     };
 
@@ -41,7 +41,7 @@ class GraphicsPipeline
 
     void createUniformBuffers();
 
-    uint32_t imageIndex(uint32_t image, uint32_t frame) const { return image * _framesInFlight + frame; }
+    uint32_t descriptorSetIndex(uint32_t image, uint32_t frame) const { return image * _framesInFlight + frame; }
 
     /* ====================== VARIABLES ===================== */
 

@@ -13,6 +13,8 @@ class UI
   public:
     void draw(const Backend::Stats& stats);
 
+    bool captureMouse() const;
+
     /* ====================== VARIABLES ===================== */
   private:
     Backend::Settings& _settings;

@@ -4,7 +4,7 @@
 struct UniformBufferObject { 
 	float2 offset, prevOffset;
 	float zoom, prevZoom;
-	uint2 renderSize;
+	uint2 computeSize;
 	float aspect;
 };
 
@@ -35,6 +35,6 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {          // texel coords [0, 1]
 	float2 uv = (q / ar + 1.0) * 0.5;                   // -> texel coords [0, 1] (previous view)
 	if (any(uv < 0.0) || any(uv > 1.0)) return float4(0, 0, 0, 1);
 	float2 imageSize;  tex.GetDimensions(imageSize.x, imageSize.y);
-	float2 px = clamp(uv * ubo.renderSize, 0.5, ubo.renderSize - 0.5);   // stay half a texel inside the corner
+	float2 px = clamp(uv * ubo.computeSize, 0.5, ubo.computeSize - 0.5);   // stay half a texel inside the corner
 	return tex.Sample(px / imageSize);
 }

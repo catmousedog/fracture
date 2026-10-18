@@ -32,7 +32,7 @@ void GPUBackend::recompute()
     vk::raii::CommandBuffer& commandBuffer = _commandQueue.getCommandBuffer();
     uint32_t                 frameIndex    = _commandQueue.getFrameIndex();
     uint32_t                 startQuery    = 2 * frameIndex;
-    VulkanImage&             image         = _computePipeline.getImages().back();
+    VulkanImage&             image         = _vulkanImages.back();
 
     // --- Reset (and read) Query --- //
     commandBuffer.resetQueryPool(_queryPool, startQuery, 2);
@@ -64,19 +64,19 @@ void GPUBackend::recompute()
     // --- Store this compute --- // (Will have to be moved later to after the dispatch has finished)
     auto extent  = image.getExtent();
     _lastCompute = {
-        .fractal    = _settings.fractal,                                                //
-        .renderSize = {extent.width / _settings.scale, extent.height / _settings.scale} //
+        .fractal     = _settings.fractal,                                  //
+        .computeSize = _settings.computeSize(extent.width, extent.height), //
     };
     float aspect = static_cast<float>(extent.width) / extent.height;
 
     // --- Bind Pipeline --- //
-    Constants constants = makeConstants(_settings.fractal, _lastCompute.renderSize, aspect);
+    Constants constants = makeConstants(_settings.fractal, _lastCompute.computeSize, aspect);
     _computePipeline.pushConstants(_commandQueue, constants);
     _computePipeline.bind(_commandQueue);
 
     // --- Execute --- //
-    uint32_t groupX = (_lastCompute.renderSize.x + 15) / 16;
-    uint32_t groupY = (_lastCompute.renderSize.y + 15) / 16;
+    uint32_t groupX = (_lastCompute.computeSize.x + 15) / 16;
+    uint32_t groupY = (_lastCompute.computeSize.y + 15) / 16;
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery);
     _commandQueue.dispatch(groupX, groupY, 1);
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery + 1);

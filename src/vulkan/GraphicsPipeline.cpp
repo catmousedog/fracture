@@ -192,7 +192,7 @@ void GraphicsPipeline::updateDescriptorSet()
     {
         for (uint32_t fr = 0; fr < _framesInFlight; fr++)
         {
-            uint32_t index = imageIndex(im, fr);
+            uint32_t index = descriptorSetIndex(im, fr);
 
             vk::DescriptorImageInfo imageInfo{
                 .sampler     = _images[im].getSampler(),               //
@@ -237,7 +237,7 @@ void GraphicsPipeline::bind(CommandQueue& commandQueue)
 {
     auto& commandBuffer = commandQueue.getCommandBuffer();
 
-    uint32_t index = imageIndex(_images.frontIndex(), commandQueue.getFrameIndex());
+    uint32_t index = descriptorSetIndex(_images.frontIndex(), commandQueue.getFrameIndex());
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
     commandBuffer.bindDescriptorSets(

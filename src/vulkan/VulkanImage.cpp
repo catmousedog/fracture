@@ -72,7 +72,7 @@ void VulkanImage::createComputeImage()
                 {
                     .srcStageMask  = vk::PipelineStageFlagBits2::eTopOfPipe,
                     .srcAccessMask = {},
-                    .dstStageMask  = vk::PipelineStageFlagBits2::eComputeShader,
+                    .dstStageMask  = vk::PipelineStageFlagBits2::eFragmentShader,
                     .dstAccessMask = vk::AccessFlagBits2::eShaderRead,
                     .oldLayout     = vk::ImageLayout::eUndefined,
                     .newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,

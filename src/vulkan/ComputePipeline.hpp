@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util/Util.hpp"
+#include "util/Swappable.hpp"
 #include "vulkan/VulkanImage.hpp"
 
 class ComputePipeline
@@ -34,10 +34,6 @@ class ComputePipeline
     void updateDescriptorSet();
 
     void bind(CommandQueue& commandQueue);
-
-    /* ================= GETTERS AND SETTERS ================ */
-
-    Swappable<VulkanImage>& getImages() { return _images; }
 
     /* ====================== VARIABLES ===================== */
   private:

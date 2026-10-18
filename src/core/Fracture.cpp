@@ -21,7 +21,8 @@ void Fracture::mainLoop()
     {
         _window.pollEvents();
         Window::Input input = _window.consumeInput();
-        updateFractal(input);
+        if (!_ui.captureMouse())
+            updateFractal(input);
 
         _renderer.beginUIFrame();         // prepare ImGui
         _ui.draw(_backend->getStats());   // create widgets
@@ -42,14 +43,19 @@ void Fracture::updateFractal(const Window::Input& input)
         // CTRL
         if (input.ctrl)
         {
-            float iterFactor = (input.scroll < 0) ? 1 / 1.1f : 1.1f;
+            float iterFactor = std::pow(1.1f, input.scroll);
             _settings.fractal.maxIter *= iterFactor;
             _settings.fractal.maxIter = std::max(_settings.fractal.maxIter, 1.f);
         }
         else
         {
-            float zoomFactor = (input.scroll < 0) ? 1.1f : 1.f / 1.1f;
-            _settings.fractal.zoom *= zoomFactor;
+            float zoomFactor = std::pow(1.1f, -input.scroll);
+            float oldZoom    = _settings.fractal.zoom;
+            float newZoom    = oldZoom * zoomFactor;
+
+            _settings.fractal.offsetX += input.mouseX * (oldZoom - newZoom);
+            _settings.fractal.offsetY += input.mouseY * (oldZoom - newZoom);
+            _settings.fractal.zoom = newZoom;
         }
     }
     // DRAG

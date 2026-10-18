@@ -21,8 +21,8 @@ Renderer::Renderer(VulkanCore& vulkanCore, Window* window)
     : _window(window),
       _vulkanCore(vulkanCore),
       _commandQueue(_vulkanCore, FRAMES_IN_FLIGHT),
-      _vertexBuffer(_vulkanCore, _commandQueue),
       _vulkanImages(_vulkanCore, _commandQueue),
+      _vertexBuffer(_vulkanCore, _commandQueue),
       _graphicsPipeline(_vulkanCore, _vulkanImages, FRAMES_IN_FLIGHT)
 {
     initUI();
@@ -93,25 +93,25 @@ void Renderer::draw(Backend& backend)
     _commandQueue.waitForFences();
 
     // acquire next (possibly still presenting) image
-    auto imageIndex = _vulkanCore.acquireNextImage(&_commandQueue);
+    auto swapChainIndex = _vulkanCore.acquireNextImage(&_commandQueue);
 
-    if (!imageIndex)
+    if (!swapChainIndex)
     {
         resize(backend);
         return;
     }
     // each image has its own semaphore to indicate it is ready for presentation
-    auto& renderFinishedSemaphore = _vulkanCore.getRenderFinishedSemaphore(*imageIndex);
+    auto& renderFinishedSemaphore = _vulkanCore.getRenderFinishedSemaphore(*swapChainIndex);
 
     /* ======================= RENDER ======================= */
     _commandQueue.reset();
 
-    record(*imageIndex, backend);
+    record(*swapChainIndex, backend);
 
     _commandQueue.submit(renderFinishedSemaphore);
 
     /* ======================= PRESENT ====================== */
-    if (!_vulkanCore.present(*imageIndex))
+    if (!_vulkanCore.present(*swapChainIndex))
     {
         resize(backend);
     }
@@ -121,7 +121,7 @@ void Renderer::draw(Backend& backend)
 
 ////////////////////////////////////////////////////////////
 
-void Renderer::record(uint32_t imageIndex, Backend& backend)
+void Renderer::record(uint32_t swapChainIndex, Backend& backend)
 {
     _commandQueue.begin();
 
@@ -129,7 +129,7 @@ void Renderer::record(uint32_t imageIndex, Backend& backend)
     backend.record();
 
     // --- Prepare and Begin Rendering --- //
-    _vulkanCore.prepare(&_commandQueue, imageIndex); // Layout is ColorAttachmentOptimal
+    _vulkanCore.prepare(&_commandQueue, swapChainIndex); // Layout is ColorAttachmentOptimal
 
     // --- Update Uniform Buffer --- //
     const auto& settings    = backend.getSettings();
@@ -140,12 +140,12 @@ void Renderer::record(uint32_t imageIndex, Backend& backend)
 
     auto                                  extent = _vulkanImages.front().getExtent();
     GraphicsPipeline::UniformBufferObject ubo{
-        .offset     = {curr.offsetX, curr.offsetY},
-        .prevOffset = {prev.offsetX, prev.offsetY},
-        .zoom       = curr.zoom,
-        .prevZoom   = prev.zoom,
-        .renderSize = lastCompute.renderSize,
-        .aspect     = float(extent.width) / extent.height
+        .offset      = {curr.offsetX, curr.offsetY},
+        .prevOffset  = {prev.offsetX, prev.offsetY},
+        .zoom        = curr.zoom,
+        .prevZoom    = prev.zoom,
+        .computeSize = lastCompute.computeSize,
+        .aspect      = float(extent.width) / extent.height
     };
     _graphicsPipeline.updateUniformBuffer(_commandQueue, ubo);
 
@@ -171,7 +171,7 @@ void Renderer::record(uint32_t imageIndex, Backend& backend)
             .dstAccessMask = {},
             .oldLayout     = vk::ImageLayout::eColorAttachmentOptimal,
             .newLayout     = vk::ImageLayout::ePresentSrcKHR,
-            .image         = _vulkanCore.getSwapImage(imageIndex),
+            .image         = _vulkanCore.getSwapImage(swapChainIndex),
         }
     );
     _commandQueue.end();

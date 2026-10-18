@@ -1,7 +1,7 @@
 #pragma once
 
 #include "backend/Backend.hpp"
-#include "util/Util.hpp"
+#include "util/Swappable.hpp"
 #include "vulkan/CommandQueue.hpp"
 #include "vulkan/GraphicsPipeline.hpp"
 #include "vulkan/VertexBuffer.hpp"
@@ -28,7 +28,7 @@ class Renderer
 
     /* ================== PRIVATE FUNCTIONS ================= */
   private:
-    void record(uint32_t imageIndex, Backend& backend);
+    void record(uint32_t swapChainIndex, Backend& backend);
 
     void resize(Backend& backend);
 

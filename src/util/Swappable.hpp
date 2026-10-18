@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstdint>
-#include <vector>
 
 template <typename T>
 class Swappable
@@ -14,20 +13,8 @@ class Swappable
     {
     }
 
-    Swappable(std::nullptr_t&& value)
-        : _data{T(value), T(value)}
-    {
-    }
-
-    Swappable(std::array<T, 2>&& data)
-        : _data(std::move(data))
-    {
-    }
-
-    Swappable(std::vector<T>&& data)
-        : _data{std::move(data[0]), std::move(data[1])}
-    {
-    }
+    Swappable(const Swappable&)            = delete;
+    Swappable& operator=(const Swappable&) = delete;
 
     void swap() { _index ^= 1; }
 

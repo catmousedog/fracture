@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util/Util.hpp"
+#include "util/Swappable.hpp"
 #include "vulkan/CommandQueue.hpp"
 
 class VulkanImage
