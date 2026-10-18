@@ -52,54 +52,18 @@ class VulkanCore
 
     /* ================= GETTERS AND SETTERS ================ */
 
-    Window* getWindow() const
-    {
-        return _window;
-    }
-    vk::raii::Instance& getInstance()
-    {
-        return _instance;
-    }
-    vk::raii::Device& getDevice()
-    {
-        return _device;
-    }
-    vk::raii::PhysicalDevice& getPhysicalDevice()
-    {
-        return _physicalDevice;
-    }
-    uint32_t getFamilyIndex() const
-    {
-        return _familyIndex;
-    }
-    vk::raii::Queue& getQueue()
-    {
-        return _queue;
-    }
-    vk::raii::SwapchainKHR& getSwapchain()
-    {
-        return _swapchain;
-    }
-    vk::Extent2D getSwapChainExtent() const
-    {
-        return _swapChainExtent;
-    }
-    vk::SurfaceFormatKHR& getSurfaceFormat()
-    {
-        return _surfaceFormat;
-    }
-    vk::Image getSwapImage(uint32_t index)
-    {
-        return _swapImages[index];
-    }
-    uint32_t getSwapImageCount() const
-    {
-        return _swapImageCount;
-    }
-    vk::raii::Semaphore& getRenderFinishedSemaphore(uint32_t index)
-    {
-        return _renderFinishedSemaphores[index];
-    }
+    Window*                   getWindow() const { return _window; }
+    vk::raii::Instance&       getInstance() { return _instance; }
+    vk::raii::Device&         getDevice() { return _device; }
+    vk::raii::PhysicalDevice& getPhysicalDevice() { return _physicalDevice; }
+    uint32_t                  getFamilyIndex() const { return _familyIndex; }
+    vk::raii::Queue&          getQueue() { return _queue; }
+    vk::raii::SwapchainKHR&   getSwapchain() { return _swapchain; }
+    vk::Extent2D              getSwapChainExtent() const { return _swapChainExtent; }
+    vk::SurfaceFormatKHR&     getSurfaceFormat() { return _surfaceFormat; }
+    vk::Image                 getSwapImage(uint32_t index) { return _swapImages[index]; }
+    uint32_t                  getSwapImageCount() const { return _swapImageCount; }
+    vk::raii::Semaphore&      getRenderFinishedSemaphore(uint32_t index) { return _renderFinishedSemaphores[index]; }
 
     /* ====================== VARIABLES ===================== */
   private:
@@ -113,8 +77,10 @@ class VulkanCore
     vk::raii::PhysicalDevice _physicalDevice = nullptr;
     vk::raii::Device         _device         = nullptr;
 
+#ifndef NDEBUG
     // Debug
     vk::raii::DebugUtilsMessengerEXT _debugMessenger = nullptr;
+#endif
 
     // Queue
     uint32_t        _familyIndex = 0;

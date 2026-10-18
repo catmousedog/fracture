@@ -83,34 +83,15 @@ void VulkanCore::createInstance()
         .apiVersion         = VK_API_VERSION_1_4,
     };
 
-    /* ===================== EXTENSIONS ===================== */
+// ======================= LAYERS ======================= //
 
-    // get required extensions for GLFW window
-    vector<const char*> extensions = _window->getRequiredExtensions();
-    extensions.push_back("VK_EXT_debug_utils"); // add debug utils extension
-    uint32_t extensionsCount = static_cast<uint32_t>(extensions.size());
-
-    // Check if the required extensions are supported by the Vulkan implementation.
-    auto extensionProperties   = _context.enumerateInstanceExtensionProperties();
-    auto unsupportedPropertyIt = std::ranges::find_if(
-        extensions,
-        [&extensionProperties](auto const& requiredExtension)
-        {
-            return std::ranges::none_of(
-                extensionProperties,
-                [requiredExtension](auto const& extensionProperty)
-                { return !strcmp(extensionProperty.extensionName, requiredExtension); }
-            );
-        }
-    );
-    if (unsupportedPropertyIt != extensions.end())
-        FATAL("Required extension not supported: {}", *unsupportedPropertyIt);
-
-    // ======================= LAYERS ======================= //
-
-    // get required layers (default add validation layers for now)
-    vector<const char*> layers     = {"VK_LAYER_KHRONOS_validation"};
-    uint32_t            layerCount = static_cast<uint32_t>(layers.size());
+// get required layers (default add validation layers for now)
+#ifndef NDEBUG
+    vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
+#else
+    vector<const char*> layers = {};
+#endif
+    uint32_t layerCount = static_cast<uint32_t>(layers.size());
 
     // Check if the required layers are supported by the Vulkan implementation.
     auto layerProperties    = _context.enumerateInstanceLayerProperties();
@@ -127,6 +108,38 @@ void VulkanCore::createInstance()
     if (unsupportedLayerIt != layers.end())
         FATAL("Required layer not supported: {}", *unsupportedLayerIt);
 
+    /* ===================== EXTENSIONS ===================== */
+
+    // get required extensions for GLFW window
+    vector<const char*> extensions = _window->getRequiredExtensions();
+#ifndef NDEBUG
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);    // add debug utils extension
+    extensions.push_back(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME); // add barrier extension
+#endif
+    uint32_t extensionsCount = static_cast<uint32_t>(extensions.size());
+
+    auto extensionProperties = _context.enumerateInstanceExtensionProperties();
+    // add extensions from layers
+    for (const char* layer : layers)
+    {
+        auto layerExts = _context.enumerateInstanceExtensionProperties(std::string(layer));
+        extensionProperties.insert(extensionProperties.end(), layerExts.begin(), layerExts.end());
+    }
+    // Check if the required extensions are supported by the Vulkan implementation.
+    auto unsupportedPropertyIt = std::ranges::find_if(
+        extensions,
+        [&extensionProperties](auto const& requiredExtension)
+        {
+            return std::ranges::none_of(
+                extensionProperties,
+                [requiredExtension](auto const& extensionProperty)
+                { return !strcmp(extensionProperty.extensionName, requiredExtension); }
+            );
+        }
+    );
+    if (unsupportedPropertyIt != extensions.end())
+        FATAL("Required extension not supported: {}", *unsupportedPropertyIt);
+
     // create instance
     vk::InstanceCreateInfo instanceInfo{
         .pApplicationInfo        = &appInfo,
@@ -136,6 +149,20 @@ void VulkanCore::createInstance()
         .ppEnabledExtensionNames = extensions.data(),
     };
 
+#ifndef NDEBUG
+    // add settings for barrier layer
+    vk::Bool32          validateSync = vk::True;
+    vk::LayerSettingEXT syncSetting{
+        .pLayerName   = "VK_LAYER_KHRONOS_validation",
+        .pSettingName = "validate_sync",
+        .type         = vk::LayerSettingTypeEXT::eBool32,
+        .valueCount   = 1,
+        .pValues      = &validateSync,
+    };
+    vk::LayerSettingsCreateInfoEXT layerSettings{.settingCount = 1, .pSettings = &syncSetting};
+    instanceInfo.pNext = &layerSettings;
+#endif
+
     _instance = vk::raii::Instance(_context, instanceInfo);
 }
 
@@ -143,6 +170,7 @@ void VulkanCore::createInstance()
 
 void VulkanCore::createDebugCallback()
 {
+#ifndef NDEBUG
     // create debug callback for any severity and type
     vk::DebugUtilsMessengerCreateInfoEXT debugMessengerInfo{
         .messageSeverity =
@@ -155,6 +183,7 @@ void VulkanCore::createDebugCallback()
     };
 
     _debugMessenger = _instance.createDebugUtilsMessengerEXT(debugMessengerInfo);
+#endif
 }
 
 ////////////////////////////////////////////////////////////
