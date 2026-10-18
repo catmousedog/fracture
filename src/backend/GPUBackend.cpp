@@ -14,6 +14,13 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Swapp
 {
     _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
 
+    // timestamp properties
+    _timestampPeriod       = _vulkanCore.getPhysicalDevice().getProperties().limits.timestampPeriod;
+    auto     props         = _vulkanCore.getPhysicalDevice().getQueueFamilyProperties();
+    uint32_t timestampBits = props[_vulkanCore.getComputeFamilyIndex()].timestampValidBits;
+    _timestampMask         = (timestampBits >= 64) ? ~uint64_t{0} : (uint64_t{1} << timestampBits) - 1;
+
+    // query pool
     _queryPool = vk::raii::QueryPool(
         _vulkanCore.getDevice(),
         vk::QueryPoolCreateInfo{
@@ -21,7 +28,6 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Swapp
             .queryCount = 2 * _commandQueue.getFramesInFlight(), // start + end per frame-in-flight
         }
     );
-    _timestampPeriod = _vulkanCore.getPhysicalDevice().getProperties().limits.timestampPeriod;
     _queryReset.resize(_commandQueue.getFramesInFlight(), false);
 }
 
@@ -44,7 +50,9 @@ void GPUBackend::recompute()
         if (result != vk::Result::eSuccess)
             FATAL("QueryPool::getResults returned {}", vk::to_string(result));
 
-        _stats.ns = (ticks[1] - ticks[0]) * _timestampPeriod;
+        // in recompute
+        uint64_t delta = (ticks[1] - ticks[0]) & _timestampMask;
+        _stats.ns      = static_cast<double>(delta) * _timestampPeriod;
     }
 
     // --- Transition to General --- //

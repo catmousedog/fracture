@@ -65,7 +65,7 @@ void Renderer::initUI()
         .Instance            = *_vulkanCore.getInstance(),
         .PhysicalDevice      = *_vulkanCore.getPhysicalDevice(),
         .Device              = *_vulkanCore.getDevice(),
-        .QueueFamily         = _vulkanCore.getFamilyIndex(),
+        .QueueFamily         = _vulkanCore.getGraphiscsFamilyIndex(),
         .Queue               = *_vulkanCore.getQueue(),
         .DescriptorPool      = *_uiDescriptorPool,
         .MinImageCount       = FRAMES_IN_FLIGHT,
@@ -111,7 +111,7 @@ void Renderer::draw(Backend& backend)
     _commandQueue.submit(renderFinishedSemaphore);
 
     /* ======================= PRESENT ====================== */
-    if (!_vulkanCore.present(*swapChainIndex))
+    if (!_vulkanCore.presentImage(*swapChainIndex))
     {
         resize(backend);
     }
@@ -129,7 +129,7 @@ void Renderer::record(uint32_t swapChainIndex, Backend& backend)
     backend.record();
 
     // --- Prepare and Begin Rendering --- //
-    _vulkanCore.prepare(&_commandQueue, swapChainIndex); // Layout is ColorAttachmentOptimal
+    _vulkanCore.prepareImage(&_commandQueue, swapChainIndex); // Layout is ColorAttachmentOptimal
 
     // --- Update Uniform Buffer --- //
     const auto& settings    = backend.getSettings();

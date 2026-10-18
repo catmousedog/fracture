@@ -44,6 +44,7 @@ class GPUBackend : public Backend
 
     vk::raii::QueryPool _queryPool = nullptr;
     float               _timestampPeriod; // ns per timestamp period
+    uint64_t            _timestampMask;
 
     vector<bool> _queryReset;
 };

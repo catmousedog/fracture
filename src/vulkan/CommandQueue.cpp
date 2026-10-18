@@ -18,7 +18,8 @@ void CommandQueue::createCommandPool()
 {
     // --- Create Command Pool --- //
     vk::CommandPoolCreateInfo poolInfo{
-        .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, .queueFamilyIndex = _vulkanCore.getFamilyIndex()
+        .flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+        .queueFamilyIndex = _vulkanCore.getGraphiscsFamilyIndex()
     };
     _commandPool = vk::raii::CommandPool(_vulkanCore.getDevice(), poolInfo);
 }

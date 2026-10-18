@@ -8,6 +8,8 @@
 #include "util/Basics.hpp"
 #include "window/Window.hpp"
 
+#include <optional>
+
 class VulkanCore
 {
     /* ======================== SETUP ======================= */
@@ -35,9 +37,9 @@ class VulkanCore
 
     std::optional<uint32_t> acquireNextImage(class CommandQueue* commandQueue);
 
-    void prepare(class CommandQueue* commandQueue, uint32_t swapChainIndex);
+    void prepareImage(class CommandQueue* commandQueue, uint32_t swapChainIndex);
 
-    bool present(uint32_t swapChainIndex);
+    bool presentImage(uint32_t swapChainIndex);
 
     void waitIdle();
 
@@ -51,13 +53,14 @@ class VulkanCore
     createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
 
     /* ================= GETTERS AND SETTERS ================ */
-
+  public:
     Window*                   getWindow() const { return _window; }
     vk::raii::Instance&       getInstance() { return _instance; }
     vk::raii::Device&         getDevice() { return _device; }
     vk::raii::PhysicalDevice& getPhysicalDevice() { return _physicalDevice; }
-    uint32_t                  getFamilyIndex() const { return _familyIndex; }
-    vk::raii::Queue&          getQueue() { return _queue; }
+    uint32_t                  getGraphiscsFamilyIndex() const { return _graphicsIndex; }
+    uint32_t                  getComputeFamilyIndex() const { return _computeIndex; }
+    vk::raii::Queue&          getQueue() { return _graphicsQueue; }
     vk::raii::SwapchainKHR&   getSwapchain() { return _swapchain; }
     vk::Extent2D              getSwapChainExtent() const { return _swapChainExtent; }
     vk::SurfaceFormatKHR&     getSurfaceFormat() { return _surfaceFormat; }
@@ -86,8 +89,10 @@ class VulkanCore
 #endif
 
     // Queue
-    uint32_t        _familyIndex = 0;
-    vk::raii::Queue _queue       = nullptr;
+    uint32_t        _graphicsIndex = 0;
+    vk::raii::Queue _graphicsQueue = nullptr;
+    uint32_t        _computeIndex  = 0;
+    vk::raii::Queue _computeQueue  = nullptr;
 
     // Swapchain
     vk::raii::SwapchainKHR      _swapchain       = nullptr;
