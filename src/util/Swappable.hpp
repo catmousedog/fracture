@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <concepts>
 #include <cstdint>
 
 template <typename T>
@@ -8,13 +9,16 @@ class Swappable
 {
   public:
     template <typename... Args>
+        requires std::constructible_from<T, Args&...>
     explicit Swappable(Args&&... args)
         : _data{T(args...), T(args...)}
     {
     }
 
-    Swappable(const Swappable&)            = delete;
-    Swappable& operator=(const Swappable&) = delete;
+    Swappable(const Swappable&)            = default;
+    Swappable(Swappable&&)                 = default;
+    Swappable& operator=(const Swappable&) = default;
+    Swappable& operator=(Swappable&&)      = default;
 
     void swap() { _index ^= 1; }
 
