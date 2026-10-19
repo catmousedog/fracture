@@ -2,12 +2,18 @@
 
 ////////////////////////////////////////////////////////////
 
-void Backend::record()
+void Backend::update()
 {
-    if (_dirty && !_settings.frozen)
+    if (_jobBusy && getJobDone())
     {
-        recompute();
-        _dirty = false;
+        onJobDone(); // swap
+        _jobBusy = false;
+    }
+    if (!_jobBusy && _dirty && !_settings.frozen)
+    {
+        submitJob(); // recompute
+        _dirty   = false;
+        _jobBusy = true;
     }
 }
 
@@ -16,7 +22,9 @@ void Backend::record()
 void Backend::resize()
 {
     onResize();
-    _dirty = true;
+    _lastJob = {};
+    _jobBusy = false; // image was just recreated
+    _dirty   = true;
 }
 
 ////////////////////////////////////////////////////////////

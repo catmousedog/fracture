@@ -25,17 +25,20 @@ class GPUBackend : public Backend
 
     virtual ~GPUBackend() = default;
 
-    /* ================== VIRTUAL FUNCTIONS ================= */
+    /* ================== HELPER FUNCTIONS ================== */
   private:
-    virtual void recompute() override;
-
     virtual void onResize() override;
+
+    virtual void onJobDone() override;
+
+    virtual void submitJob() override;
 
     virtual std::optional<vk::SemaphoreSubmitInfo> getReady() const override;
 
-    /* ================== HELPER FUNCTIONS ================== */
-
     Constants makeConstants(const Fractal& fractal, glm::uvec2 computeSize, float aspect);
+
+    /* ================= GETTERS AND SETTERS ================ */
+    bool getJobDone() const override;
 
     /* ====================== VARIABLES ===================== */
 
@@ -50,5 +53,5 @@ class GPUBackend : public Backend
     float               _timestampPeriod; // ns per timestamp period
     uint64_t            _timestampMask;
 
-    uint64_t _frontJob = 0;
+    uint64_t _frontJob = 0, _submittedJob = 0;
 };

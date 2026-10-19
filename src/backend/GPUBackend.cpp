@@ -1,6 +1,5 @@
 #include "GPUBackend.hpp"
 
-#include "util/Log.hpp"
 #include "util/Vulkan.hpp"
 #include "vulkan/VulkanImage.hpp"
 
@@ -33,12 +32,43 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanIma
 
 ////////////////////////////////////////////////////////////
 
-void GPUBackend::recompute()
+void GPUBackend::onResize()
+{
+    _computePipeline.updateDescriptorSet();
+}
+
+////////////////////////////////////////////////////////////
+
+void GPUBackend::onJobDone()
+{
+    // --- Read Query --- //
+    auto [result, ticks] =
+        _queryPool.getResults<uint64_t>(0, 2, 2 * sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::e64);
+    uint64_t delta = (ticks[1] - ticks[0]) & _timestampMask;
+    _stats.ns      = static_cast<double>(delta) * _timestampPeriod;
+
+    // previous = current
+    _lastJob  = _job;
+    _frontJob = _submittedJob;
+
+    // swap images
+    _vulkanImages.swap();
+}
+
+////////////////////////////////////////////////////////////
+
+void GPUBackend::submitJob()
 {
     vk::raii::CommandBuffer& commandBuffer = _computeQueue.getCommandBuffer();
-    uint32_t                 jobIndex      = _computeQueue.getJobIndex();
-    uint32_t                 startQuery    = 2 * jobIndex;
     VulkanImage&             image         = _vulkanImages.back();
+    auto                     extent        = image.getExtent();
+    float                    aspect        = static_cast<float>(extent.width) / extent.height;
+
+    // --- Store this compute --- //
+    _job = {
+        .fractal     = _settings.fractal,                                  //
+        .computeSize = _settings.computeSize(extent.width, extent.height), //
+    };
 
     // --- Reset Compute Queue --- //
     _computeQueue.reset();
@@ -61,25 +91,17 @@ void GPUBackend::recompute()
         }
     );
 
-    // --- Store this compute --- // (Will have to be moved later to after the dispatch has finished)
-    auto extent  = image.getExtent();
-    _lastCompute = {
-        .fractal     = _settings.fractal,                                  //
-        .computeSize = _settings.computeSize(extent.width, extent.height), //
-    };
-    float aspect = static_cast<float>(extent.width) / extent.height;
-
     // --- Bind Pipeline --- //
-    Constants constants = makeConstants(_settings.fractal, _lastCompute.computeSize, aspect);
+    Constants constants = makeConstants(_job.fractal, _job.computeSize, aspect);
     _computePipeline.pushConstants(_computeQueue, constants);
     _computePipeline.bind(_computeQueue);
 
     // --- Execute --- //
-    uint32_t groupX = (_lastCompute.computeSize.x + 15) / 16;
-    uint32_t groupY = (_lastCompute.computeSize.y + 15) / 16;
-    commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery);
+    uint32_t groupX = (_job.computeSize.x + 15) / 16;
+    uint32_t groupY = (_job.computeSize.y + 15) / 16;
+    commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, 0);
     _computeQueue.dispatch(groupX, groupY, 1);
-    commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery + 1);
+    commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, 1);
 
     // --- Transition to ShaderReadOnlyOptimal --- //
     util::transitionImageLayout(
@@ -98,25 +120,14 @@ void GPUBackend::recompute()
     // --- Submit Compute Queue --- //
     _computeQueue.end();
     _computeQueue.submit(_graphicsQueue.getRenderDoneSemaphore(), _graphicsQueue.getFrameNumber());
-    _computeQueue.wait();
-
-    // --- Read Query --- //
-    auto [result, ticks] =
-        _queryPool.getResults<uint64_t>(0, 2, 2 * sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::e64);
-    uint64_t delta = (ticks[1] - ticks[0]) & _timestampMask;
-    _stats.ns      = static_cast<double>(delta) * _timestampPeriod;
-
-    _frontJob = _computeQueue.getJobNumber();
-
-    // swap images
-    _vulkanImages.swap();
+    _submittedJob = _computeQueue.getJobNumber();
 }
 
 ////////////////////////////////////////////////////////////
 
-void GPUBackend::onResize()
+bool GPUBackend::getJobDone() const
 {
-    _computePipeline.updateDescriptorSet();
+    return _computeQueue.getJobDoneSemaphore().getCounterValue() >= _submittedJob;
 }
 
 ////////////////////////////////////////////////////////////

@@ -28,6 +28,7 @@ VSOutput vertMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {          // texel coords [0, 1]
+	if (any(ubo.computeSize == 0)) return float4(0, 0, 0, 1);   // nothing computed yet
     float2 ar = float2(ubo.aspect, 1.0);
 	float2 p  = (vertIn.fragTexCoord * 2.0 - 1.0) * ar; // -> centered screen (current view)
 	float2 c  = ubo.offset + p * ubo.zoom;              // -> complex plane (current view)

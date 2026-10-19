@@ -126,17 +126,17 @@ void Renderer::record(uint32_t swapChainIndex, Backend& backend)
     _graphicsQueue.begin();
 
     // --- Recompute --- //
-    backend.record();
+    backend.update();
 
     // --- Prepare and Begin Rendering --- //
     _vulkanCore.prepareImage(&_graphicsQueue, swapChainIndex); // Layout is ColorAttachmentOptimal
 
     // --- Update Uniform Buffer --- //
-    const auto& settings    = backend.getSettings();
-    const auto& lastCompute = backend.getLastCompute();
+    const auto& settings = backend.getSettings();
+    const auto& lastJob  = backend.getLastJob();
 
     const Fractal& curr = settings.fractal;
-    const Fractal& prev = lastCompute.fractal;
+    const Fractal& prev = lastJob.fractal;
 
     auto                                  extent = _vulkanImages.front().getExtent();
     GraphicsPipeline::UniformBufferObject ubo{
@@ -144,7 +144,7 @@ void Renderer::record(uint32_t swapChainIndex, Backend& backend)
         .prevOffset  = {prev.offsetX, prev.offsetY},
         .zoom        = curr.zoom,
         .prevZoom    = prev.zoom,
-        .computeSize = lastCompute.computeSize,
+        .computeSize = lastJob.computeSize,
         .aspect      = float(extent.width) / extent.height
     };
     _graphicsPipeline.updateUniformBuffer(_graphicsQueue, ubo);

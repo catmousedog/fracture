@@ -35,7 +35,7 @@ class Backend
         }
     };
 
-    struct LastCompute
+    struct Job
     {
         Fractal    fractal;
         glm::uvec2 computeSize = {0, 0};
@@ -56,7 +56,7 @@ class Backend
 
     /* ================== PUBLIC FUNCTIONS ================== */
 
-    void record();
+    void update();
 
     void resize();
 
@@ -64,27 +64,33 @@ class Backend
 
     /* ================== HELPER FUNCTIONS ================= */
   private:
-    virtual void recompute() = 0;
-
     virtual void onResize() = 0;
 
+    virtual void onJobDone() = 0;
+
+    virtual void submitJob() = 0;
+
     /* ================= GETTERS AND SETTERS ================ */
+  protected:
+    virtual bool getJobDone() const = 0;
+
   public:
     void setSettings(const Settings& settings);
 
     const Settings& getSettings() const { return _settings; }
 
-    const LastCompute& getLastCompute() const { return _lastCompute; }
+    const Job& getLastJob() const { return _lastJob; }
 
     const Stats& getStats() const { return _stats; }
 
     /* ====================== VARIABLES ===================== */
 
   protected:
-    Settings    _settings;    // current settings
-    LastCompute _lastCompute; // contents of the previously computed image
-    Stats       _stats;
+    Settings _settings;      // current settings
+    Job      _lastJob, _job; // contents of the previously computed image
+    Stats    _stats;
 
   private:
-    bool _dirty = true;
+    bool _jobBusy = false;
+    bool _dirty   = true;
 };
