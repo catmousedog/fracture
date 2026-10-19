@@ -2,8 +2,8 @@
 
 #include "backend/Backend.hpp"
 #include "util/Swappable.hpp"
-#include "vulkan/CommandQueue.hpp"
 #include "vulkan/GraphicsPipeline.hpp"
+#include "vulkan/GraphicsQueue.hpp"
 #include "vulkan/VertexBuffer.hpp"
 #include "vulkan/VulkanCore.hpp"
 #include "vulkan/VulkanImage.hpp"
@@ -36,13 +36,13 @@ class Renderer
   public:
     Swappable<VulkanImage>& getImages() { return _vulkanImages; }
 
-    CommandQueue& getCommandQueue() { return _commandQueue; }
+    GraphicsQueue& getGraphicsQueue() { return _graphicsQueue; }
 
     /* ====================== VARIABLES ===================== */
   private:
     Window*                _window = nullptr;
     VulkanCore&            _vulkanCore;
-    CommandQueue           _commandQueue;
+    GraphicsQueue          _graphicsQueue;
     Swappable<VulkanImage> _vulkanImages;
     VertexBuffer           _vertexBuffer;
     GraphicsPipeline       _graphicsPipeline;

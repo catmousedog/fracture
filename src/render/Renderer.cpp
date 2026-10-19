@@ -20,9 +20,9 @@ constexpr uint32_t FRAMES_IN_FLIGHT = 2;
 Renderer::Renderer(VulkanCore& vulkanCore, Window* window)
     : _window(window),
       _vulkanCore(vulkanCore),
-      _commandQueue(_vulkanCore, FRAMES_IN_FLIGHT),
-      _vulkanImages(_vulkanCore, _commandQueue),
-      _vertexBuffer(_vulkanCore, _commandQueue),
+      _graphicsQueue(_vulkanCore, FRAMES_IN_FLIGHT),
+      _vulkanImages(_vulkanCore, _graphicsQueue),
+      _vertexBuffer(_vulkanCore, _graphicsQueue),
       _graphicsPipeline(_vulkanCore, _vulkanImages, FRAMES_IN_FLIGHT)
 {
     initUI();
@@ -66,7 +66,7 @@ void Renderer::initUI()
         .PhysicalDevice      = *_vulkanCore.getPhysicalDevice(),
         .Device              = *_vulkanCore.getDevice(),
         .QueueFamily         = _vulkanCore.getGraphiscsFamilyIndex(),
-        .Queue               = *_vulkanCore.getQueue(),
+        .Queue               = *_vulkanCore.getGraphicsQueue(),
         .DescriptorPool      = *_uiDescriptorPool,
         .MinImageCount       = FRAMES_IN_FLIGHT,
         .ImageCount          = FRAMES_IN_FLIGHT,
@@ -90,10 +90,10 @@ void Renderer::beginUIFrame()
 
 void Renderer::draw(Backend& backend)
 {
-    _commandQueue.waitForFences();
+    _graphicsQueue.waitForFences();
 
     // acquire next (possibly still presenting) image
-    auto swapChainIndex = _vulkanCore.acquireNextImage(&_commandQueue);
+    auto swapChainIndex = _vulkanCore.acquireNextImage(&_graphicsQueue);
 
     if (!swapChainIndex)
     {
@@ -104,11 +104,11 @@ void Renderer::draw(Backend& backend)
     auto& renderFinishedSemaphore = _vulkanCore.getRenderFinishedSemaphore(*swapChainIndex);
 
     /* ======================= RENDER ======================= */
-    _commandQueue.reset();
+    _graphicsQueue.reset();
 
     record(*swapChainIndex, backend);
 
-    _commandQueue.submit(renderFinishedSemaphore);
+    _graphicsQueue.submit(renderFinishedSemaphore, backend.getReady());
 
     /* ======================= PRESENT ====================== */
     if (!_vulkanCore.presentImage(*swapChainIndex))
@@ -116,20 +116,20 @@ void Renderer::draw(Backend& backend)
         resize(backend);
     }
 
-    _commandQueue.nextFrame();
+    _graphicsQueue.nextFrame();
 }
 
 ////////////////////////////////////////////////////////////
 
 void Renderer::record(uint32_t swapChainIndex, Backend& backend)
 {
-    _commandQueue.begin();
+    _graphicsQueue.begin();
 
     // --- Recompute --- //
     backend.record();
 
     // --- Prepare and Begin Rendering --- //
-    _vulkanCore.prepareImage(&_commandQueue, swapChainIndex); // Layout is ColorAttachmentOptimal
+    _vulkanCore.prepareImage(&_graphicsQueue, swapChainIndex); // Layout is ColorAttachmentOptimal
 
     // --- Update Uniform Buffer --- //
     const auto& settings    = backend.getSettings();
@@ -147,23 +147,23 @@ void Renderer::record(uint32_t swapChainIndex, Backend& backend)
         .computeSize = lastCompute.computeSize,
         .aspect      = float(extent.width) / extent.height
     };
-    _graphicsPipeline.updateUniformBuffer(_commandQueue, ubo);
+    _graphicsPipeline.updateUniformBuffer(_graphicsQueue, ubo);
 
     // --- Bind Pipeline --- //
-    _graphicsPipeline.bind(_commandQueue);
+    _graphicsPipeline.bind(_graphicsQueue);
 
     // --- Draw --- //
-    _vertexBuffer.draw(_commandQueue);
+    _vertexBuffer.draw(_graphicsQueue);
 
     ImGui::Render();
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *_commandQueue.getCommandBuffer());
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *_graphicsQueue.getCommandBuffer());
 
     // --- End Rendering --- //
-    _commandQueue.endRendering();
+    _graphicsQueue.endRendering();
 
     // --- Transition to PresentSrcKHR --- //
     util::transitionImageLayout(
-        _commandQueue.getCommandBuffer(),
+        _graphicsQueue.getCommandBuffer(),
         {
             .srcStageMask  = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
             .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
@@ -174,7 +174,7 @@ void Renderer::record(uint32_t swapChainIndex, Backend& backend)
             .image         = _vulkanCore.getSwapImage(swapChainIndex),
         }
     );
-    _commandQueue.end();
+    _graphicsQueue.end();
 }
 
 ////////////////////////////////////////////////////////////

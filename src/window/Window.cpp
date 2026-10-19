@@ -1,6 +1,8 @@
 #include "Window.hpp"
 #include "util/Log.hpp"
 
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #include <vulkan/vulkan_raii.hpp>
 
 #include <GLFW/glfw3.h>
@@ -11,6 +13,11 @@
 namespace
 {
 
+constexpr uint32_t MIN_WIDTH  = 320;
+constexpr uint32_t MIN_HEIGHT = 240;
+constexpr uint32_t WIDTH      = 1280;
+constexpr uint32_t HEIGHT     = 720;
+
 GLFWwindow* createWindow()
 {
     glfwInit();
@@ -18,7 +25,7 @@ GLFWwindow* createWindow()
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHintString(GLFW_WAYLAND_APP_ID, "float"); // custom Hyprland rule
 
-    return glfwCreateWindow(1280, 720, "fracture", nullptr, nullptr);
+    return glfwCreateWindow(WIDTH, HEIGHT, "Fracture", nullptr, nullptr);
 }
 
 } // namespace
@@ -95,6 +102,7 @@ void Window::keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int acti
 Window::Window()
     : _glfwWindow(createWindow())
 {
+    glfwSetWindowSizeLimits(_glfwWindow, MIN_WIDTH, MIN_HEIGHT, GLFW_DONT_CARE, GLFW_DONT_CARE);
     glfwSetWindowUserPointer(_glfwWindow, this);
     glfwSetScrollCallback(_glfwWindow, scrollCallback);
     glfwSetMouseButtonCallback(_glfwWindow, mouseButtonCallback);

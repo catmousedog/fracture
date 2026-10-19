@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CommandQueue.hpp"
+#include "GraphicsQueue.hpp"
 #include "VulkanCore.hpp"
 
 #define GLM_FORCE_RADIANS
@@ -36,7 +36,7 @@ class VertexBuffer
 
     /* ======================== SETUP ======================= */
 
-    VertexBuffer(VulkanCore& vulkanCore, CommandQueue& commandQueue);
+    VertexBuffer(VulkanCore& vulkanCore, GraphicsQueue& graphicsQueue);
 
   private:
     void createVertexBuffer();
@@ -44,12 +44,12 @@ class VertexBuffer
 
     /* ================== PUBLIC FUNCTIONS ================== */
   public:
-    void draw(CommandQueue& commandQueue);
+    void draw(GraphicsQueue& graphicsQueue);
 
     /* ====================== VARIABLES ===================== */
   private:
-    VulkanCore&   _vulkanCore;
-    CommandQueue& _commandQueue;
+    VulkanCore&    _vulkanCore;
+    GraphicsQueue& _graphicsQueue;
 
     // Vertex Buffer
     std::vector<Vertex>    _vertices           = {};

@@ -1,10 +1,9 @@
 #include "VulkanCore.hpp"
 #include "util/Log.hpp"
 #include "util/Vulkan.hpp"
-#include "vulkan/CommandQueue.hpp"
+#include "vulkan/GraphicsQueue.hpp"
 
 #include <algorithm>
-#include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
 #include <fstream>
@@ -239,7 +238,7 @@ void VulkanCore::createLogicalDevice()
     }
     if (_graphicsIndex == UINT32_MAX)
         FATAL("No graphics+present queue family found");
-    if (_computeIndex == _graphicsIndex)
+    if (_computeIndex == UINT32_MAX)
         FATAL("No dedicated compute queue family found");
 
     if (queueFamilies[_computeIndex].timestampValidBits == 0)
@@ -249,7 +248,7 @@ void VulkanCore::createLogicalDevice()
     std::array<float, 2>                     priorities = {1.0f, 0.5f}; // [0] graphics, [1] compute
     std::array<vk::DeviceQueueCreateInfo, 2> queueInfos{
         {{.queueFamilyIndex = _graphicsIndex, .queueCount = 1, .pQueuePriorities = &priorities[0]},
-         {.queueFamilyIndex = _graphicsIndex, .queueCount = 1, .pQueuePriorities = &priorities[1]}}
+         {.queueFamilyIndex = _computeIndex, .queueCount = 1, .pQueuePriorities = &priorities[1]}}
     };
 
     const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -270,6 +269,9 @@ void VulkanCore::createLogicalDevice()
     //         .shaderFloat64 = true // doubles in shader
     //     }
     // };
+    vk::PhysicalDeviceVulkan12Features deviceFeatures12{
+        .timelineSemaphore = true // timeline semaphores
+    };
     vk::PhysicalDeviceVulkan13Features deviceFeatures13{
         .synchronization2 = true, // new API features
         .dynamicRendering = true  // dynamic rendering
@@ -281,11 +283,13 @@ void VulkanCore::createLogicalDevice()
     vk::StructureChain<
         vk::DeviceCreateInfo,
         // vk::PhysicalDeviceFeatures2,
+        vk::PhysicalDeviceVulkan12Features,
         vk::PhysicalDeviceVulkan13Features,
         vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
         chain{
-            deviceInfo, //
-            // deviceFeatures2,           // 64-bit floats in shaders
+            deviceInfo,                //
+                                       // deviceFeatures2,           // 64-bit floats in shaders
+            deviceFeatures12,          // timeline semaphores
             deviceFeatures13,          // new API features + dynamic rendering
             deviceFeaturesDynamicState // dynamic rendering
     };
@@ -294,7 +298,7 @@ void VulkanCore::createLogicalDevice()
 
     // --- Obtain queue --- //
     _graphicsQueue = _device.getQueue(_graphicsIndex, 0);
-    _computeQueue  = _device.getQueue(_graphicsIndex, 1);
+    _computeQueue  = _device.getQueue(_computeIndex, 0);
 }
 
 ////////////////////////////////////////////////////////////
@@ -460,10 +464,10 @@ void VulkanCore::logInfo()
 
 ////////////////////////////////////////////////////////////
 
-std::optional<uint32_t> VulkanCore::acquireNextImage(CommandQueue* commandQueue)
+std::optional<uint32_t> VulkanCore::acquireNextImage(GraphicsQueue* graphicsQueue)
 {
     auto [acquireResult, swapChainIndex] =
-        _swapchain.acquireNextImage(UINT64_MAX, *commandQueue->getPresentCompleteSemaphore(), nullptr);
+        _swapchain.acquireNextImage(UINT64_MAX, *graphicsQueue->getPresentCompleteSemaphore(), nullptr);
 
     // if out-of-date, recreate swapchain
     if (acquireResult == vk::Result::eErrorOutOfDateKHR)
@@ -478,13 +482,13 @@ std::optional<uint32_t> VulkanCore::acquireNextImage(CommandQueue* commandQueue)
 
 ////////////////////////////////////////////////////////////
 
-void VulkanCore::prepareImage(CommandQueue* commandQueue, uint32_t swapChainIndex)
+void VulkanCore::prepareImage(GraphicsQueue* graphicsQueue, uint32_t swapChainIndex)
 {
-    auto& commandBuffer = commandQueue->getCommandBuffer();
+    auto& commandBuffer = graphicsQueue->getCommandBuffer();
 
     // --- Transition to ColorAttachmentOptimal --- //
     util::transitionImageLayout(
-        commandQueue->getCommandBuffer(),
+        graphicsQueue->getCommandBuffer(),
         {
             .srcStageMask  = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
             .srcAccessMask = {},
@@ -558,7 +562,7 @@ bool VulkanCore::presentImage(uint32_t swapChainIndex)
 
 void VulkanCore::waitIdle()
 {
-    _graphicsQueue.waitIdle();
+    _device.waitIdle();
 }
 
 ////////////////////////////////////////////////////////////

@@ -125,9 +125,9 @@ void ComputePipeline::updateDescriptorSet()
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::bind(CommandQueue& commandQueue)
+void ComputePipeline::bind(ComputeQueue& computeQueue)
 {
-    auto& commandBuffer = commandQueue.getCommandBuffer();
+    auto& commandBuffer = computeQueue.getCommandBuffer();
 
     // --- Bind Descriptor Set --- //
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_pipeline);

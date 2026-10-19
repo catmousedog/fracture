@@ -35,9 +35,9 @@ class VulkanCore
   public:
     void logInfo();
 
-    std::optional<uint32_t> acquireNextImage(class CommandQueue* commandQueue);
+    std::optional<uint32_t> acquireNextImage(class GraphicsQueue* graphicsQueue);
 
-    void prepareImage(class CommandQueue* commandQueue, uint32_t swapChainIndex);
+    void prepareImage(class GraphicsQueue* graphicsQueue, uint32_t swapChainIndex);
 
     bool presentImage(uint32_t swapChainIndex);
 
@@ -60,7 +60,8 @@ class VulkanCore
     vk::raii::PhysicalDevice& getPhysicalDevice() { return _physicalDevice; }
     uint32_t                  getGraphiscsFamilyIndex() const { return _graphicsIndex; }
     uint32_t                  getComputeFamilyIndex() const { return _computeIndex; }
-    vk::raii::Queue&          getQueue() { return _graphicsQueue; }
+    vk::raii::Queue&          getGraphicsQueue() { return _graphicsQueue; }
+    vk::raii::Queue&          getComputeQueue() { return _computeQueue; }
     vk::raii::SwapchainKHR&   getSwapchain() { return _swapchain; }
     vk::Extent2D              getSwapChainExtent() const { return _swapChainExtent; }
     vk::SurfaceFormatKHR&     getSurfaceFormat() { return _surfaceFormat; }

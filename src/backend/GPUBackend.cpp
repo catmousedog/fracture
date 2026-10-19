@@ -6,10 +6,11 @@
 
 ////////////////////////////////////////////////////////////
 
-GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Swappable<VulkanImage>& vulkanImages)
+GPUBackend::GPUBackend(VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanImages, GraphicsQueue& graphicsQueue)
     : _vulkanCore(vulkanCore),
-      _commandQueue(commandQueue),
       _vulkanImages(vulkanImages),
+      _computeQueue(_vulkanCore),
+      _graphicsQueue(graphicsQueue),
       _computePipeline(_vulkanCore, vulkanImages)
 {
     _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
@@ -25,42 +26,33 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Swapp
         _vulkanCore.getDevice(),
         vk::QueryPoolCreateInfo{
             .queryType  = vk::QueryType::eTimestamp,
-            .queryCount = 2 * _commandQueue.getFramesInFlight(), // start + end per frame-in-flight
+            .queryCount = 2, // start + end per job
         }
     );
-    _queryReset.resize(_commandQueue.getFramesInFlight(), false);
 }
 
 ////////////////////////////////////////////////////////////
 
 void GPUBackend::recompute()
 {
-    vk::raii::CommandBuffer& commandBuffer = _commandQueue.getCommandBuffer();
-    uint32_t                 frameIndex    = _commandQueue.getFrameIndex();
-    uint32_t                 startQuery    = 2 * frameIndex;
+    vk::raii::CommandBuffer& commandBuffer = _computeQueue.getCommandBuffer();
+    uint32_t                 jobIndex      = _computeQueue.getJobIndex();
+    uint32_t                 startQuery    = 2 * jobIndex;
     VulkanImage&             image         = _vulkanImages.back();
 
-    // --- Reset (and read) Query --- //
-    commandBuffer.resetQueryPool(_queryPool, startQuery, 2);
-    if (_queryReset[frameIndex])
-    {
-        auto [result, ticks] = _queryPool.getResults<uint64_t>(
-            startQuery, 2, 2 * sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::e64
-        );
-        if (result != vk::Result::eSuccess)
-            FATAL("QueryPool::getResults returned {}", vk::to_string(result));
+    // --- Reset Compute Queue --- //
+    _computeQueue.reset();
+    _computeQueue.begin();
 
-        // in recompute
-        uint64_t delta = (ticks[1] - ticks[0]) & _timestampMask;
-        _stats.ns      = static_cast<double>(delta) * _timestampPeriod;
-    }
+    // --- Reset Query --- //
+    commandBuffer.resetQueryPool(_queryPool, 0, 2);
 
     // --- Transition to General --- //
     util::transitionImageLayout(
-        _commandQueue.getCommandBuffer(),
+        _computeQueue.getCommandBuffer(),
         {
-            .srcStageMask  = vk::PipelineStageFlagBits2::eFragmentShader,
-            .srcAccessMask = vk::AccessFlagBits2::eShaderRead,
+            .srcStageMask  = vk::PipelineStageFlagBits2::eComputeShader,
+            .srcAccessMask = vk::AccessFlagBits2::eNone,
             .dstStageMask  = vk::PipelineStageFlagBits2::eComputeShader,
             .dstAccessMask = vk::AccessFlagBits2::eShaderWrite,
             .oldLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -79,32 +71,42 @@ void GPUBackend::recompute()
 
     // --- Bind Pipeline --- //
     Constants constants = makeConstants(_settings.fractal, _lastCompute.computeSize, aspect);
-    _computePipeline.pushConstants(_commandQueue, constants);
-    _computePipeline.bind(_commandQueue);
+    _computePipeline.pushConstants(_computeQueue, constants);
+    _computePipeline.bind(_computeQueue);
 
     // --- Execute --- //
     uint32_t groupX = (_lastCompute.computeSize.x + 15) / 16;
     uint32_t groupY = (_lastCompute.computeSize.y + 15) / 16;
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery);
-    _commandQueue.dispatch(groupX, groupY, 1);
+    _computeQueue.dispatch(groupX, groupY, 1);
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, startQuery + 1);
 
     // --- Transition to ShaderReadOnlyOptimal --- //
     util::transitionImageLayout(
-        _commandQueue.getCommandBuffer(),
+        _computeQueue.getCommandBuffer(),
         {
             .srcStageMask  = vk::PipelineStageFlagBits2::eComputeShader,
             .srcAccessMask = vk::AccessFlagBits2::eShaderWrite,
-            .dstStageMask  = vk::PipelineStageFlagBits2::eFragmentShader,
-            .dstAccessMask = vk::AccessFlagBits2::eShaderRead,
+            .dstStageMask  = vk::PipelineStageFlagBits2::eAllCommands,
+            .dstAccessMask = vk::AccessFlagBits2::eNone,
             .oldLayout     = vk::ImageLayout::eGeneral,
             .newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,
             .image         = image.getComputeImage(),
         }
     );
 
-    // this query will be recorded and reset in the next frame
-    _queryReset[frameIndex] = true;
+    // --- Submit Compute Queue --- //
+    _computeQueue.end();
+    _computeQueue.submit(_graphicsQueue.getRenderDoneSemaphore(), _graphicsQueue.getFrameNumber());
+    _computeQueue.wait();
+
+    // --- Read Query --- //
+    auto [result, ticks] =
+        _queryPool.getResults<uint64_t>(0, 2, 2 * sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::e64);
+    uint64_t delta = (ticks[1] - ticks[0]) & _timestampMask;
+    _stats.ns      = static_cast<double>(delta) * _timestampPeriod;
+
+    _frontJob = _computeQueue.getJobNumber();
 
     // swap images
     _vulkanImages.swap();
@@ -118,6 +120,17 @@ void GPUBackend::onResize()
 }
 
 ////////////////////////////////////////////////////////////
+
+std::optional<vk::SemaphoreSubmitInfo> GPUBackend::getReady() const
+{
+    if (_frontJob == 0)
+        return std::nullopt; // nothing computed yet
+    return vk::SemaphoreSubmitInfo{
+        .semaphore = _computeQueue.getJobDoneSemaphore(),
+        .value     = _frontJob,
+        .stageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+    };
+}
 
 GPUBackend::Constants GPUBackend::makeConstants(const Fractal& fractal, glm::uvec2 computeSize, float aspect)
 {

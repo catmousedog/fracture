@@ -5,9 +5,9 @@
 
 ////////////////////////////////////////////////////////////
 
-VulkanImage::VulkanImage(VulkanCore& vulkanCore, CommandQueue& commandQueue)
+VulkanImage::VulkanImage(VulkanCore& vulkanCore, GraphicsQueue& graphicsQueue)
     : _vulkanCore(vulkanCore),
-      _commandQueue(commandQueue)
+      _graphicsQueue(graphicsQueue)
 {
     createComputeImage();
     createSampler();
@@ -23,18 +23,20 @@ void VulkanImage::createComputeImage()
     constexpr vk::Format format = vk::Format::eR8G8B8A8Unorm;
 
     /* ==================== CREATE IMAGE ==================== */
-    vk::ImageCreateInfo imageInfo{
-        .imageType   = vk::ImageType::e2D,
-        .format      = format,
-        .extent      = {_extent.width, _extent.height, 1},
-        .mipLevels   = 1,
-        .arrayLayers = 1,
-        .samples     = vk::SampleCountFlagBits::e1,
-        .tiling      = vk::ImageTiling::eOptimal,
-        .usage =
-            vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
-        .sharingMode   = vk::SharingMode::eExclusive,
-        .initialLayout = vk::ImageLayout::eUndefined
+    std::array<uint32_t, 2> families = {_vulkanCore.getComputeFamilyIndex(), _vulkanCore.getGraphiscsFamilyIndex()};
+    vk::ImageCreateInfo     imageInfo{
+        .imageType             = vk::ImageType::e2D,
+        .format                = format,
+        .extent                = {_extent.width, _extent.height, 1},
+        .mipLevels             = 1,
+        .arrayLayers           = 1,
+        .samples               = vk::SampleCountFlagBits::e1,
+        .tiling                = vk::ImageTiling::eOptimal,
+        .usage                 = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
+        .sharingMode           = vk::SharingMode::eConcurrent,
+        .queueFamilyIndexCount = families.size(),
+        .pQueueFamilyIndices   = families.data(),
+        .initialLayout         = vk::ImageLayout::eUndefined
     };
     _computeImage = vk::raii::Image(device, imageInfo);
 
@@ -64,7 +66,7 @@ void VulkanImage::createComputeImage()
     _computeImageView = vk::raii::ImageView(device, viewInfo);
 
     /* ================== TRANSITION IMAGE ================== */
-    _commandQueue.singleCommand(
+    _graphicsQueue.singleCommand(
         [this](vk::raii::CommandBuffer& commandBuffer)
         {
             util::transitionImageLayout(

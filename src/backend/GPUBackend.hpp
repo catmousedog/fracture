@@ -2,6 +2,7 @@
 
 #include "backend/Backend.hpp"
 #include "vulkan/ComputePipeline.hpp"
+#include "vulkan/ComputeQueue.hpp"
 
 #include <glm/glm.hpp>
 
@@ -20,7 +21,7 @@ class GPUBackend : public Backend
 
     /* ======================== SETUP ======================= */
   public:
-    GPUBackend(VulkanCore& vulkanCore, CommandQueue& commandQueue, Swappable<VulkanImage>& vulkanImages);
+    GPUBackend(VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanImages, GraphicsQueue& graphicsQueue);
 
     virtual ~GPUBackend() = default;
 
@@ -30,6 +31,8 @@ class GPUBackend : public Backend
 
     virtual void onResize() override;
 
+    virtual std::optional<vk::SemaphoreSubmitInfo> getReady() const override;
+
     /* ================== HELPER FUNCTIONS ================== */
 
     Constants makeConstants(const Fractal& fractal, glm::uvec2 computeSize, float aspect);
@@ -37,8 +40,9 @@ class GPUBackend : public Backend
     /* ====================== VARIABLES ===================== */
 
     VulkanCore&             _vulkanCore;
-    CommandQueue&           _commandQueue;
     Swappable<VulkanImage>& _vulkanImages;
+    GraphicsQueue&          _graphicsQueue;
+    ComputeQueue            _computeQueue;
 
     ComputePipeline _computePipeline;
 
@@ -46,5 +50,5 @@ class GPUBackend : public Backend
     float               _timestampPeriod; // ns per timestamp period
     uint64_t            _timestampMask;
 
-    vector<bool> _queryReset;
+    uint64_t _frontJob = 0;
 };

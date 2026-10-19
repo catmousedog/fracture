@@ -1,6 +1,7 @@
 #pragma once
 
 #include "util/Swappable.hpp"
+#include "vulkan/ComputeQueue.hpp"
 #include "vulkan/VulkanImage.hpp"
 
 class ComputePipeline
@@ -23,9 +24,9 @@ class ComputePipeline
     void updatePipeline(uint32_t pushConstantSize);
 
     template <typename T>
-    void pushConstants(CommandQueue& commandQueue, T& constants)
+    void pushConstants(ComputeQueue& computeQueue, T& constants)
     {
-        auto& commandBuffer = commandQueue.getCommandBuffer();
+        auto& commandBuffer = computeQueue.getCommandBuffer();
         commandBuffer.pushConstants(_pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(T), &constants);
     }
 
@@ -33,7 +34,7 @@ class ComputePipeline
 
     void updateDescriptorSet();
 
-    void bind(CommandQueue& commandQueue);
+    void bind(ComputeQueue& computeQueue);
 
     /* ====================== VARIABLES ===================== */
   private:

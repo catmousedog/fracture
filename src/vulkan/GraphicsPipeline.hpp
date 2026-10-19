@@ -25,9 +25,9 @@ class GraphicsPipeline
 
     void updateDescriptorSet();
 
-    void updateUniformBuffer(const CommandQueue& commandQueue, const UniformBufferObject&);
+    void updateUniformBuffer(const GraphicsQueue& graphicsQueue, const UniformBufferObject&);
 
-    void bind(CommandQueue& commandQueue);
+    void bind(GraphicsQueue& graphicsQueue);
 
     /* ================== HELPER FUNCTIONS ================== */
   private:

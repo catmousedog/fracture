@@ -225,19 +225,19 @@ void GraphicsPipeline::updateDescriptorSet()
 ////////////////////////////////////////////////////////////
 
 // WIP: still needs to accept changing UBO
-void GraphicsPipeline::updateUniformBuffer(const CommandQueue& commandQueue, const UniformBufferObject& ubo)
+void GraphicsPipeline::updateUniformBuffer(const GraphicsQueue& graphicsQueue, const UniformBufferObject& ubo)
 {
-    uint32_t frameIndex = commandQueue.getFrameIndex();
+    uint32_t frameIndex = graphicsQueue.getFrameIndex();
     std::memcpy(_uniformBuffers[frameIndex].mapped, &ubo, sizeof(UniformBufferObject));
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsPipeline::bind(CommandQueue& commandQueue)
+void GraphicsPipeline::bind(GraphicsQueue& graphicsQueue)
 {
-    auto& commandBuffer = commandQueue.getCommandBuffer();
+    auto& commandBuffer = graphicsQueue.getCommandBuffer();
 
-    uint32_t index = descriptorSetIndex(_images.frontIndex(), commandQueue.getFrameIndex());
+    uint32_t index = descriptorSetIndex(_images.frontIndex(), graphicsQueue.getFrameIndex());
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
     commandBuffer.bindDescriptorSets(

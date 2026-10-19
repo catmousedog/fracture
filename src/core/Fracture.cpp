@@ -82,7 +82,7 @@ void Fracture::switchBackend()
     switch (_settings.backendType)
     {
     case Backend::Type::GPU:
-        _backend = std::make_unique<GPUBackend>(_vulkanCore, _renderer.getCommandQueue(), _renderer.getImages());
+        _backend = std::make_unique<GPUBackend>(_vulkanCore, _renderer.getImages(), _renderer.getGraphicsQueue());
         break;
     }
 }

@@ -2,9 +2,9 @@
 
 ////////////////////////////////////////////////////////////
 
-VertexBuffer::VertexBuffer(VulkanCore& vulkanCore, CommandQueue& commandQueue)
+VertexBuffer::VertexBuffer(VulkanCore& vulkanCore, GraphicsQueue& graphicsQueue)
     : _vulkanCore(vulkanCore),
-      _commandQueue(commandQueue),
+      _graphicsQueue(graphicsQueue),
 
       // --- Fullscreen Quad --- //
       _vertices(
@@ -44,7 +44,7 @@ void VertexBuffer::createVertexBuffer()
     );
 
     // --- Transfer from Staging Buffer --- //
-    _commandQueue.singleCommand(
+    _graphicsQueue.singleCommand(
         [&](vk::raii::CommandBuffer& commandBuffer)
         { commandBuffer.copyBuffer(*stagingBuffer, *_vertexBuffer, vk::BufferCopy{.size = bufferSize}); }
     );
@@ -75,7 +75,7 @@ void VertexBuffer::createIndexBuffer()
     );
 
     // --- Transfer from Staging Buffer --- //
-    _commandQueue.singleCommand(
+    _graphicsQueue.singleCommand(
         [&](vk::raii::CommandBuffer& commandBuffer)
         { commandBuffer.copyBuffer(*stagingBuffer, *_indexBuffer, vk::BufferCopy{.size = bufferSize}); }
     );
@@ -83,9 +83,9 @@ void VertexBuffer::createIndexBuffer()
 
 ////////////////////////////////////////////////////////////
 
-void VertexBuffer::draw(CommandQueue& commandQueue)
+void VertexBuffer::draw(GraphicsQueue& graphicsQueue)
 {
-    auto& commandBuffer = commandQueue.getCommandBuffer();
+    auto& commandBuffer = graphicsQueue.getCommandBuffer();
 
     commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
