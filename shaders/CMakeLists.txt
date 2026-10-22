@@ -2,7 +2,6 @@ find_program(SLANGC_EXECUTABLE slangc REQUIRED)
 
 set(SHADER_SOURCES
     graphics.slang
-    compute.slang
 )
 
 foreach(SHADER ${SHADER_SOURCES})
@@ -11,8 +10,6 @@ foreach(SHADER ${SHADER_SOURCES})
 
     if(SHADER_NAME STREQUAL "graphics")
         set(ENTRY_POINTS -entry vertMain -entry fragMain)
-    elseif(SHADER_NAME STREQUAL "compute")
-        set(ENTRY_POINTS -entry compMain)
     endif()
 
     add_custom_command(

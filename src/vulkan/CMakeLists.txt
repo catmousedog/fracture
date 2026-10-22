@@ -7,6 +7,7 @@ add_library(${TARGET}
 
 target_link_libraries(${TARGET} PRIVATE
 	Vulkan::Vulkan
+	slang::slang
 	imgui
 	window
 	glm

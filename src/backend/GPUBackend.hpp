@@ -46,8 +46,7 @@ class GPUBackend : public Backend
     Swappable<VulkanImage>& _vulkanImages;
     GraphicsQueue&          _graphicsQueue;
     ComputeQueue            _computeQueue;
-
-    ComputePipeline _computePipeline;
+    ComputePipeline         _computePipeline;
 
     vk::raii::QueryPool _queryPool = nullptr;
     float               _timestampPeriod; // ns per timestamp period

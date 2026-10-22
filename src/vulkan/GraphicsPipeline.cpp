@@ -79,7 +79,7 @@ void GraphicsPipeline::createDescriptorSet()
 void GraphicsPipeline::createPipeline()
 {
     // --- Create Shader --- //
-    vk::raii::ShaderModule            shader = _vulkanCore.readShader("graphics");
+    vk::raii::ShaderModule            shader = _vulkanCore.readShaderCode("graphics");
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eVertex, .module = shader, .pName = "vertMain"
     };

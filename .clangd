@@ -1,5 +1,5 @@
 CompileFlags:
-  CompilationDatabase: build/release/
+  CompilationDatabase: build/debug/
 
 Completion:
   HeaderInsertion: Never

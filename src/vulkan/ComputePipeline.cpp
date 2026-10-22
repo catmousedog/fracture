@@ -1,4 +1,5 @@
 #include "ComputePipeline.hpp"
+#include "vulkan/SlangCompiler.hpp"
 
 ////////////////////////////////////////////////////////////
 
@@ -68,8 +69,8 @@ void ComputePipeline::createDescriptorSet()
 
 void ComputePipeline::readShader()
 {
-    // Create Shader
-    _shader = _vulkanCore.readShader("compute");
+    std::vector<uint32_t> code = compileComputeShader("compute");
+    _shader                    = _vulkanCore.createShaderModule(code);
 }
 
 ////////////////////////////////////////////////////////////
@@ -121,6 +122,7 @@ void ComputePipeline::updateDescriptorSet()
         };
         _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
     }
+    readShader();
 }
 
 ////////////////////////////////////////////////////////////

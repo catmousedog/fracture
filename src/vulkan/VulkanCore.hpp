@@ -47,7 +47,9 @@ class VulkanCore
 
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 
-    vk::raii::ShaderModule readShader(string shaderName) const;
+    vk::raii::ShaderModule createShaderModule(std::span<uint32_t> code) const;
+
+    vk::raii::ShaderModule readShaderCode(string shaderName) const;
 
     std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
     createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);

@@ -593,7 +593,17 @@ uint32_t VulkanCore::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags
 
 ////////////////////////////////////////////////////////////
 
-vk::raii::ShaderModule VulkanCore::readShader(string shaderName) const
+vk::raii::ShaderModule VulkanCore::createShaderModule(std::span<uint32_t> code) const
+{
+    vk::ShaderModuleCreateInfo shaderModuleInfo{.codeSize = code.size() * sizeof(uint32_t), .pCode = code.data()};
+
+    // guaranteed copy elision
+    return vk::raii::ShaderModule(_device, shaderModuleInfo);
+}
+
+////////////////////////////////////////////////////////////
+
+vk::raii::ShaderModule VulkanCore::readShaderCode(string shaderName) const
 {
     string shaderPath = SHADER_DIR + shaderName + ".spv";
 
@@ -603,19 +613,17 @@ vk::raii::ShaderModule VulkanCore::readShader(string shaderName) const
     if (!file.is_open())
         FATAL("failed to open shader at {}!", shaderPath);
 
-    vector<char> shaderCode(file.tellg());
+    const std::streamsize size = file.tellg();
+    if (size % sizeof(uint32_t) != 0)
+        FATAL("SPIR-V size not a multiple of 4 for shader {}", shaderName);
+
+    std::vector<uint32_t> code(static_cast<size_t>(size) / sizeof(uint32_t));
 
     file.seekg(0, std::ios::beg);
-    file.read(shaderCode.data(), static_cast<std::streamsize>(shaderCode.size()));
-
+    file.read(reinterpret_cast<char*>(code.data()), size);
     file.close();
 
-    vk::ShaderModuleCreateInfo shaderModuleInfo{
-        .codeSize = shaderCode.size() * sizeof(char), .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())
-    };
-
-    // guaranteed copy elision
-    return vk::raii::ShaderModule(_device, shaderModuleInfo);
+    return createShaderModule(code);
 }
 
 ////////////////////////////////////////////////////////////
