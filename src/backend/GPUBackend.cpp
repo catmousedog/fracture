@@ -66,8 +66,7 @@ void GPUBackend::submitJob()
 
     // --- Store this compute --- //
     _job = {
-        .fractal     = _settings.fractal,                                  //
-        .computeSize = _settings.computeSize(extent.width, extent.height), //
+        .fractal = _settings.fractal, //
     };
 
     // --- Reset Compute Queue --- //
@@ -92,13 +91,13 @@ void GPUBackend::submitJob()
     );
 
     // --- Bind Pipeline --- //
-    Constants constants = makeConstants(_job.fractal, _job.computeSize, aspect);
+    Constants constants = makeConstants(_job.fractal, aspect);
     _computePipeline.pushConstants(_computeQueue, constants);
     _computePipeline.bind(_computeQueue);
 
     // --- Execute --- //
-    uint32_t groupX = (_job.computeSize.x + 15) / 16;
-    uint32_t groupY = (_job.computeSize.y + 15) / 16;
+    uint32_t groupX = (extent.width + 15) / 16;
+    uint32_t groupY = (extent.height + 15) / 16;
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, 0);
     _computeQueue.dispatch(groupX, groupY, 1);
     commandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eComputeShader, _queryPool, 1);
@@ -143,15 +142,14 @@ std::optional<vk::SemaphoreSubmitInfo> GPUBackend::getReady() const
     };
 }
 
-GPUBackend::Constants GPUBackend::makeConstants(const Fractal& fractal, glm::uvec2 computeSize, float aspect)
+GPUBackend::Constants GPUBackend::makeConstants(const Fractal& fractal, float aspect)
 {
     Constants constants;
 
-    constants.offset      = glm::vec2(fractal.offsetX, fractal.offsetY);
-    constants.zoom        = fractal.zoom;
-    constants.maxIter     = (int)fractal.maxIter;
-    constants.computeSize = computeSize;
-    constants.aspect      = aspect;
+    constants.offset  = glm::vec2(fractal.offsetX, fractal.offsetY);
+    constants.zoom    = fractal.zoom;
+    constants.maxIter = (int)fractal.maxIter;
+    constants.aspect  = aspect;
 
     return constants;
 }

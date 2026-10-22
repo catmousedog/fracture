@@ -12,11 +12,10 @@ class GPUBackend : public Backend
   private:
     struct Constants
     {
-        alignas(8) glm::vec2 offset       = {0.0f, 0.0f};
-        alignas(4) float zoom             = 1.0f;
-        alignas(4) int maxIter            = 100;
-        alignas(8) glm::uvec2 computeSize = {16, 16};
-        alignas(4) float aspect           = 1.0f;
+        alignas(8) glm::vec2 offset = {0.0f, 0.0f};
+        alignas(4) float zoom       = 1.0f;
+        alignas(4) int maxIter      = 100;
+        alignas(4) float aspect     = 1.0f;
     };
 
     /* ======================== SETUP ======================= */
@@ -35,7 +34,7 @@ class GPUBackend : public Backend
 
     virtual std::optional<vk::SemaphoreSubmitInfo> getReady() const override;
 
-    Constants makeConstants(const Fractal& fractal, glm::uvec2 computeSize, float aspect);
+    Constants makeConstants(const Fractal& fractal, float aspect);
 
     /* ================= GETTERS AND SETTERS ================ */
     bool getJobDone() const override;

@@ -90,10 +90,6 @@ void UI::draw(const Backend::Stats& stats)
         if (ImGui::ListBox("Backend", &current, items.data(), items.size(), 1))
             _settings.backendType = static_cast<Backend::Type>(current);
 
-        int scale = _settings.scale;
-        if (ImGui::SliderInt("Scale", &scale, 1, 16))
-            _settings.scale = scale;
-
         // --- Fractal Settings --- //
         ImGui::Text("Fractal Settings");
         ImGui::Separator();

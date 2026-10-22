@@ -9,7 +9,6 @@ struct FractalPushConstants {
 	float2 center;     // point in complex plane the view is centered on
     float zoom;        // scale factor
     int maxIterations;
-	uint2 computeSize; // size of the sub-image to compute
 	float aspect;      // aspect of the full image
 };
 
@@ -63,12 +62,14 @@ extern struct Color : IColor;
 [shader("compute")] [numthreads(16, 16, 1)]
 void compMain(uint3 id : SV_DispatchThreadID)
 {
-	if (any(id.xy >= pc.computeSize)) return;
+	uint width, height;
+    outputImage.GetDimensions(width, height);
+    if (id.x >= width || id.y >= height) return;
 
 	Fractal fractal; Color color;
 
 	// sub-image coordinates -> (x, y) = ([-aspect, aspect], [-1, 1])
-    float2 uv = (float2(id.xy) + 0.5) / float2(pc.computeSize) * 2.0 - 1.0;
+    float2 uv = (float2(id.xy) + 0.5) / float2(width, height) * 2.0 - 1.0;
     uv.x *= pc.aspect; // aspect of full image and not (rounded) sub-image
 	float2 c = pc.center + uv * pc.zoom;
 

@@ -140,12 +140,11 @@ void Renderer::record(uint32_t swapChainIndex, Backend& backend)
 
     auto                                  extent = _vulkanImages.front().getExtent();
     GraphicsPipeline::UniformBufferObject ubo{
-        .offset      = {curr.offsetX, curr.offsetY},
-        .prevOffset  = {prev.offsetX, prev.offsetY},
-        .zoom        = curr.zoom,
-        .prevZoom    = prev.zoom,
-        .computeSize = lastJob.computeSize,
-        .aspect      = float(extent.width) / extent.height
+        .offset     = {curr.offsetX, curr.offsetY},
+        .prevOffset = {prev.offsetX, prev.offsetY},
+        .zoom       = curr.zoom,
+        .prevZoom   = prev.zoom,
+        .aspect     = float(extent.width) / extent.height
     };
     _graphicsPipeline.updateUniformBuffer(_graphicsQueue, ubo);
 

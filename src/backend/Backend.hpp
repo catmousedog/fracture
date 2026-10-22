@@ -2,8 +2,6 @@
 
 #include "fractals/Fractal.hpp"
 
-#include <algorithm>
-#include <cstdint>
 #include <glm/glm.hpp>
 #include <optional>
 
@@ -22,23 +20,16 @@ class Backend
 
     struct Settings
     {
-        Fractal  fractal;
-        Type     backendType = Type::GPU;
-        uint32_t scale       = 1;
-        bool     frozen      = false;
+        Fractal fractal;
+        Type    backendType = Type::GPU;
+        bool    frozen      = false;
 
         bool operator==(const Settings& other) const = default;
-
-        glm::uvec2 computeSize(uint32_t width, uint32_t height) const
-        {
-            return {std::max(1u, width / scale), std::max(1u, height / scale)};
-        }
     };
 
     struct Job
     {
-        Fractal    fractal;
-        glm::uvec2 computeSize = {0, 0};
+        Fractal fractal;
     };
 
     struct Stats

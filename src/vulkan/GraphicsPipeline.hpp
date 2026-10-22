@@ -13,7 +13,6 @@ class GraphicsPipeline
     {
         alignas(8) glm::vec2 offset, prevOffset;
         alignas(4) float zoom, prevZoom;
-        alignas(8) glm::uvec2 computeSize;
         alignas(4) float aspect;
     };
 
