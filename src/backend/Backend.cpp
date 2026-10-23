@@ -9,7 +9,7 @@ void Backend::update()
         onJobDone(); // swap
         _jobBusy = false;
     }
-    if (!_jobBusy && _dirty && !_settings.frozen)
+    if (!_jobBusy && _dirty)
     {
         submitJob(); // recompute
         _dirty   = false;
@@ -29,13 +29,17 @@ void Backend::resize()
 
 ////////////////////////////////////////////////////////////
 
-void Backend::setSettings(const Settings& settings)
+void Backend::changeFractal()
 {
-    if (settings != _settings)
-    {
-        _settings = settings;
-        _dirty    = true;
-    }
+    _dirty = true;
+    onFractalChange();
+}
+
+////////////////////////////////////////////////////////////
+
+void Backend::markDirty()
+{
+    _dirty = true;
 }
 
 ////////////////////////////////////////////////////////////

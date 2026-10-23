@@ -20,13 +20,17 @@ class GPUBackend : public Backend
 
     /* ======================== SETUP ======================= */
   public:
-    GPUBackend(VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanImages, GraphicsQueue& graphicsQueue);
+    GPUBackend(
+        VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanImages, GraphicsQueue& graphicsQueue, Settings& settings
+    );
 
     virtual ~GPUBackend() = default;
 
     /* ================== HELPER FUNCTIONS ================== */
   private:
     virtual void onResize() override;
+
+    virtual void onFractalChange() override;
 
     virtual void onJobDone() override;
 

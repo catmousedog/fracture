@@ -5,12 +5,15 @@
 
 ////////////////////////////////////////////////////////////
 
-GPUBackend::GPUBackend(VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanImages, GraphicsQueue& graphicsQueue)
-    : _vulkanCore(vulkanCore),
+GPUBackend::GPUBackend(
+    VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanImages, GraphicsQueue& graphicsQueue, Settings& settings
+)
+    : Backend(settings),
+      _vulkanCore(vulkanCore),
       _vulkanImages(vulkanImages),
       _computeQueue(_vulkanCore),
       _graphicsQueue(graphicsQueue),
-      _computePipeline(_vulkanCore, vulkanImages)
+      _computePipeline(_vulkanCore, vulkanImages, _settings.fractal.type)
 {
     _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
 
@@ -35,6 +38,14 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanIma
 void GPUBackend::onResize()
 {
     _computePipeline.updateDescriptorSet();
+}
+
+////////////////////////////////////////////////////////////
+
+void GPUBackend::onFractalChange()
+{
+    _computePipeline.readShader(_settings.fractal.type);
+    _computePipeline.updatePipeline(sizeof(Constants));
 }
 
 ////////////////////////////////////////////////////////////

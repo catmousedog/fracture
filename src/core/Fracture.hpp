@@ -21,8 +21,6 @@ class Fracture
 
     void updateBackend();
 
-    void switchBackend();
-
     /* ====================== VARIABLES ===================== */
   private:
     // window that will use GLFW implementation
@@ -34,8 +32,7 @@ class Fracture
     Renderer _renderer;
 
     // backend to calculate fractal outputs
-    Backend::Settings        _settings;
-    Backend::Type            _prevBackendType;
+    Backend::Settings        _settings, _prevSettings;
     std::unique_ptr<Backend> _backend;
 
     // UI is agnostic to renderer or fractal

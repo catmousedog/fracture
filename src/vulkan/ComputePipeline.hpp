@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fractals/Fractal.hpp"
 #include "util/Swappable.hpp"
 #include "vulkan/ComputeQueue.hpp"
 #include "vulkan/VulkanImage.hpp"
@@ -8,7 +9,7 @@ class ComputePipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    ComputePipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images);
+    ComputePipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images, FractalType fractalType);
 
   private:
     void createDescriptorPool();
@@ -16,8 +17,6 @@ class ComputePipeline
     void createDescriptorLayout();
 
     void createDescriptorSet();
-
-    void readShader();
 
     /* ================== PUBLIC FUNCTIONS ================== */
   public:
@@ -30,9 +29,9 @@ class ComputePipeline
         commandBuffer.pushConstants(_pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(T), &constants);
     }
 
-    /* ================== VIRTUAL FUNCTIONS ================= */
-
     void updateDescriptorSet();
+
+    void readShader(FractalType fractalType);
 
     void bind(ComputeQueue& computeQueue);
 

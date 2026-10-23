@@ -7,10 +7,12 @@
 Fracture::Fracture()
     : _vulkanCore(&_window),
       _renderer(_vulkanCore, &_window),
-      _ui(_settings)
+      _ui(_settings),
+      _backend(
+          std::make_unique<GPUBackend>(_vulkanCore, _renderer.getImages(), _renderer.getGraphicsQueue(), _settings)
+      )
 {
-    _prevBackendType = _settings.backendType = Backend::Type::GPU;
-    switchBackend();
+    _prevSettings = _settings;
 }
 
 ////////////////////////////////////////////////////////////
@@ -24,11 +26,11 @@ void Fracture::mainLoop()
         if (!_ui.captureMouse())
             updateFractal(input);
 
-        _renderer.beginUIFrame();         // prepare ImGui
-        _ui.draw(_backend->getStats());   // create widgets
-        updateBackend();                  // WIP: backend switching
-        _backend->setSettings(_settings); // flag backend to recompute if needed
-        _renderer.draw(*_backend);        // record graphics and ImGui (recompute if flagged)
+        _renderer.beginUIFrame();       // prepare ImGui
+        _ui.draw(_backend->getStats()); // create widgets
+        updateBackend();                // WIP: backend switching
+        // _backend->setSettings(_settings); // flag backend to recompute if needed
+        _renderer.draw(*_backend); // record graphics and ImGui (recompute if flagged)
     }
     _vulkanCore.waitIdle();
 }
@@ -67,23 +69,18 @@ void Fracture::updateFractal(const Window::Input& input)
 
 void Fracture::updateBackend()
 {
-    if (_settings.backendType != _prevBackendType)
+    // Fractal type changed
+    if (_settings.fractal.type != _prevSettings.fractal.type)
     {
-        _prevBackendType = _settings.backendType;
-        _vulkanCore.waitIdle();
-        switchBackend();
+        _prevSettings.fractal.type = _settings.fractal.type;
+        _backend->changeFractal();
     }
-}
 
-////////////////////////////////////////////////////////////
-
-void Fracture::switchBackend()
-{
-    switch (_settings.backendType)
+    // other Fractal settings changed
+    if (_settings.fractal != _prevSettings.fractal)
     {
-    case Backend::Type::GPU:
-        _backend = std::make_unique<GPUBackend>(_vulkanCore, _renderer.getImages(), _renderer.getGraphicsQueue());
-        break;
+        _prevSettings.fractal = _settings.fractal;
+        _backend->markDirty();
     }
 }
 

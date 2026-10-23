@@ -8,9 +8,10 @@ add_library(${TARGET}
 target_link_libraries(${TARGET} PRIVATE
 	Vulkan::Vulkan
 	slang::slang
+	glm
 	imgui
 	window
-	glm
+	fractals
 )
 target_include_directories(${TARGET} PRIVATE
     ${Vulkan_INCLUDE_DIRS}

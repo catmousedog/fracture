@@ -18,15 +18,15 @@ class Backend
         GPU = 0
     };
 
+    // Settings used to store the current state of the backend
     struct Settings
     {
         Fractal fractal;
-        Type    backendType = Type::GPU;
-        bool    frozen      = false;
 
         bool operator==(const Settings& other) const = default;
     };
 
+    // Fractal and metadata to perform compute job
     struct Job
     {
         Fractal fractal;
@@ -39,7 +39,10 @@ class Backend
 
     /* ======================== SETUP ======================= */
 
-    Backend()                          = default;
+    Backend(Settings& settings)
+        : _settings(settings)
+    {
+    }
     virtual ~Backend()                 = default;
     Backend(const Backend&)            = delete;
     Backend(Backend&&)                 = delete;
@@ -51,11 +54,17 @@ class Backend
 
     void resize();
 
+    void changeFractal();
+
+    void markDirty();
+
     virtual std::optional<vk::SemaphoreSubmitInfo> getReady() const = 0;
 
     /* ================== HELPER FUNCTIONS ================= */
   private:
     virtual void onResize() = 0;
+
+    virtual void onFractalChange() = 0;
 
     virtual void onJobDone() = 0;
 
@@ -66,8 +75,6 @@ class Backend
     virtual bool getJobDone() const = 0;
 
   public:
-    void setSettings(const Settings& settings);
-
     const Settings& getSettings() const { return _settings; }
 
     const Job& getLastJob() const { return _lastJob; }
@@ -77,11 +84,12 @@ class Backend
     /* ====================== VARIABLES ===================== */
 
   protected:
-    Settings _settings;      // current settings
-    Job      _lastJob, _job; // contents of the previously computed image
-    Stats    _stats;
+    Settings& _settings;      // current settings
+    Job       _job, _lastJob; // contents of the previously computed image
+    Stats     _stats;
 
   private:
-    bool _jobBusy = false;
-    bool _dirty   = true;
+    bool _jobBusy      = false;
+    bool _dirty        = true;
+    bool _dirtyFractal = true;
 };

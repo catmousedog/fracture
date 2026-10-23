@@ -85,13 +85,13 @@ void UI::draw(const Backend::Stats& stats)
         // --- Backend Settings --- //
         ImGui::Text("Backend Settings");
         ImGui::Separator();
-        constexpr std::array<const char*, 1> items   = {"GPU"}; // WIP: reflection
-        int                                  current = std::to_underlying(_settings.backendType);
-        if (ImGui::ListBox("Backend", &current, items.data(), items.size(), 1))
-            _settings.backendType = static_cast<Backend::Type>(current);
 
         // --- Fractal Settings --- //
         ImGui::Text("Fractal Settings");
+        constexpr std::array<const char*, 2> fractalTypes = {"Mandelbrot", "BurningShip"};
+        int                                  fractalType  = std::to_underlying(_settings.fractal.type);
+        if (ImGui::ListBox("Fractal", &fractalType, fractalTypes.data(), fractalTypes.size(), fractalTypes.size()))
+            _settings.fractal.type = static_cast<FractalType>(fractalType);
         ImGui::Separator();
 
         auto ns = std::chrono::nanoseconds{(long long)stats.ns};
@@ -105,8 +105,6 @@ void UI::draw(const Backend::Stats& stats)
         int maxIter = _settings.fractal.maxIter;
         if (ImGui::InputInt("Max Iterations", &maxIter))
             _settings.fractal.maxIter = maxIter;
-
-        ImGui::Checkbox("Freeze", &_settings.frozen);
 
         if (ImGui::Button("Reset"))
             _settings.fractal = Fractal{};

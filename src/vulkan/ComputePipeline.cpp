@@ -3,14 +3,14 @@
 
 ////////////////////////////////////////////////////////////
 
-ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images)
+ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images, FractalType fractalType)
     : _vulkanCore(vulkanCore),
       _images(images)
 {
     createDescriptorPool();
     createDescriptorLayout();
     createDescriptorSet();
-    readShader();
+    readShader(fractalType);
 }
 
 ////////////////////////////////////////////////////////////
@@ -67,14 +67,6 @@ void ComputePipeline::createDescriptorSet()
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::readShader()
-{
-    std::vector<uint32_t> code = compileComputeShader("compute");
-    _shader                    = _vulkanCore.createShaderModule(code);
-}
-
-////////////////////////////////////////////////////////////
-
 void ComputePipeline::updatePipeline(uint32_t pushConstantSize)
 {
     vk::PipelineShaderStageCreateInfo compShaderStageInfo{
@@ -122,7 +114,14 @@ void ComputePipeline::updateDescriptorSet()
         };
         _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
     }
-    readShader();
+}
+
+////////////////////////////////////////////////////////////
+
+void ComputePipeline::readShader(FractalType fractalType)
+{
+    std::vector<uint32_t> code = compileComputeShader("compute", toString(fractalType));
+    _shader                    = _vulkanCore.createShaderModule(code);
 }
 
 ////////////////////////////////////////////////////////////

@@ -1,12 +1,12 @@
 set(TARGET fractals)
 
 file(GLOB SOURCES "*.cpp")
-add_library(${TARGET} INTERFACE
+add_library(${TARGET} STATIC
     ${SOURCES}
 )
 
-# target_link_libraries(${TARGET} PRIVATE
-# 	util
-# )
+target_link_libraries(${TARGET} PRIVATE
+	util
+)
 
-# LINK_SRC(${TARGET})
+LINK_SRC(${TARGET})
