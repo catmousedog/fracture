@@ -1,12 +1,11 @@
 #pragma once
 
 #include "backend/Backend.hpp"
-#include "util/Swappable.hpp"
 #include "vulkan/GraphicsPipeline.hpp"
-#include "vulkan/GraphicsQueue.hpp"
 #include "vulkan/VertexBuffer.hpp"
 #include "vulkan/VulkanCore.hpp"
 #include "vulkan/VulkanImage.hpp"
+#include "vulkan/VulkanQueue.hpp"
 #include "window/Window.hpp"
 
 class Renderer
@@ -34,18 +33,18 @@ class Renderer
 
     /* ================= GETTERS AND SETTERS ================ */
   public:
-    Swappable<VulkanImage>& getImages() { return _vulkanImages; }
+    VulkanImage& getImage() { return _vulkanImage; }
 
-    GraphicsQueue& getGraphicsQueue() { return _graphicsQueue; }
+    VulkanQueue& getGraphicsQueue() { return _vulkanQueue; }
 
     /* ====================== VARIABLES ===================== */
   private:
-    Window*                _window = nullptr;
-    VulkanCore&            _vulkanCore;
-    GraphicsQueue          _graphicsQueue;
-    Swappable<VulkanImage> _vulkanImages;
-    VertexBuffer           _vertexBuffer;
-    GraphicsPipeline       _graphicsPipeline;
+    Window*          _window = nullptr;
+    VulkanCore&      _vulkanCore;
+    VulkanQueue      _vulkanQueue;
+    VulkanImage      _vulkanImage;
+    VertexBuffer     _vertexBuffer;
+    GraphicsPipeline _graphicsPipeline;
 
     vk::raii::DescriptorPool _uiDescriptorPool = nullptr;
 };

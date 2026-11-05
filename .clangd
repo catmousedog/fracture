@@ -1,5 +1,2 @@
-CompileFlags:
-  CompilationDatabase: build/debug/
-
 Completion:
   HeaderInsertion: Never

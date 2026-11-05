@@ -2,7 +2,6 @@
 
 #include "backend/Backend.hpp"
 #include "vulkan/ComputePipeline.hpp"
-#include "vulkan/ComputeQueue.hpp"
 
 #include <glm/glm.hpp>
 
@@ -20,9 +19,7 @@ class GPUBackend : public Backend
 
     /* ======================== SETUP ======================= */
   public:
-    GPUBackend(
-        VulkanCore& vulkanCore, Swappable<VulkanImage>& vulkanImages, GraphicsQueue& graphicsQueue, Settings& settings
-    );
+    GPUBackend(VulkanCore& vulkanCore, VulkanImage& vulkanImage, VulkanQueue& vulkanQueue, Settings& settings);
 
     virtual ~GPUBackend() = default;
 
@@ -32,28 +29,19 @@ class GPUBackend : public Backend
 
     virtual void onFractalChange() override;
 
-    virtual void onJobDone() override;
-
     virtual void submitJob() override;
-
-    virtual std::optional<vk::SemaphoreSubmitInfo> getReady() const override;
 
     Constants makeConstants(const Fractal& fractal, float aspect);
 
-    /* ================= GETTERS AND SETTERS ================ */
-    bool getJobDone() const override;
-
     /* ====================== VARIABLES ===================== */
 
-    VulkanCore&             _vulkanCore;
-    Swappable<VulkanImage>& _vulkanImages;
-    GraphicsQueue&          _graphicsQueue;
-    ComputeQueue            _computeQueue;
-    ComputePipeline         _computePipeline;
+    VulkanCore&     _vulkanCore;
+    VulkanImage&    _vulkanImage;
+    VulkanQueue&    _vulkanQueue;
+    ComputePipeline _computePipeline;
 
     vk::raii::QueryPool _queryPool = nullptr;
     float               _timestampPeriod; // ns per timestamp period
     uint64_t            _timestampMask;
-
-    uint64_t _frontJob = 0, _submittedJob = 0;
+    vector<bool>        _timestampReady;
 };

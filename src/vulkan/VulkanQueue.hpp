@@ -5,13 +5,13 @@
 
 #include <functional>
 
-class GraphicsQueue
+class VulkanQueue
 {
     /* ==================== NESTED CLASS ==================== */
 
     struct FrameWorker
     {
-        FrameWorker(GraphicsQueue& graphicsQueue);
+        FrameWorker(VulkanQueue& graphicsQueue);
 
         vk::raii::CommandBuffer commandBuffer            = nullptr;
         vk::raii::Fence         drawFence                = nullptr;
@@ -20,7 +20,7 @@ class GraphicsQueue
 
     /* ======================== SETUP ======================= */
   public:
-    GraphicsQueue(VulkanCore& vulkanCore, uint32_t framesInFlight);
+    VulkanQueue(VulkanCore& vulkanCore, uint32_t framesInFlight);
 
     void createCommandPool();
 
@@ -30,7 +30,7 @@ class GraphicsQueue
 
     /* ================== PUBLIC FUNCTIONS ================== */
 
-    void submit(vk::raii::Semaphore& renderFinishedSemaphore, std::optional<vk::SemaphoreSubmitInfo>);
+    void submit(uint32_t swapChainIndex);
 
     void dispatch(uint32_t groupX, uint32_t groupY, uint32_t groupZ);
 
@@ -58,8 +58,6 @@ class GraphicsQueue
     vk::raii::Semaphore& getPresentCompleteSemaphore() { return _frameWorkers[_frameIndex].presentCompleteSemaphore; }
     uint32_t             getFramesInFlight() const { return _framesInFlight; }
     uint32_t             getFrameIndex() const { return _frameIndex; }
-    vk::raii::Semaphore& getRenderDoneSemaphore() { return _renderDone; }
-    uint64_t             getFrameNumber() const { return _frameNumber; }
 
     /* ====================== VARIABLES ===================== */
   private:
@@ -70,8 +68,4 @@ class GraphicsQueue
     uint32_t            _framesInFlight = 0;
     uint32_t            _frameIndex     = 0;
     vector<FrameWorker> _frameWorkers;
-
-    // timeline: value N = frame N's graphics work is done
-    vk::raii::Semaphore _renderDone  = nullptr;
-    uint64_t            _frameNumber = 0;
 };

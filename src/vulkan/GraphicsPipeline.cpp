@@ -3,15 +3,13 @@
 
 ////////////////////////////////////////////////////////////
 
-GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images, uint32_t framesInFlight)
+GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage)
     : _vulkanCore(vulkanCore),
-      _images(images),
-      _framesInFlight(framesInFlight)
+      _vulkanImage(vulkanImage)
 {
     createDescriptorPool();
     createDescriptorLayout();
     createDescriptorSet();
-    createUniformBuffers();
     updateDescriptorSet();
     createPipeline();
 }
@@ -21,17 +19,14 @@ GraphicsPipeline::GraphicsPipeline(VulkanCore& vulkanCore, Swappable<VulkanImage
 void GraphicsPipeline::createDescriptorPool()
 {
     // --- Pool Sizes --- //
-    std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
-        {.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 2 * _framesInFlight},
-        {.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = 2 * _framesInFlight},
-    }};
+    vk::DescriptorPoolSize poolSize = {.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1};
 
     // --- Create Descriptor Pool --- //
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets       = 2 * _framesInFlight,
-        .poolSizeCount = poolSizes.size(),
-        .pPoolSizes    = poolSizes.data()
+        .maxSets       = 1,
+        .poolSizeCount = 1,
+        .pPoolSizes    = &poolSize
     };
     _descriptorPool = _vulkanCore.getDevice().createDescriptorPool(poolInfo);
 }
@@ -41,21 +36,17 @@ void GraphicsPipeline::createDescriptorPool()
 void GraphicsPipeline::createDescriptorLayout()
 {
     // --- Bindings --- //
-    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {
-        {{.binding         = 0,
-          .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
-          .descriptorCount = 1,
-          .stageFlags      = vk::ShaderStageFlagBits::eFragment},
-         {.binding         = 1,
-          .descriptorType  = vk::DescriptorType::eUniformBuffer,
-          .descriptorCount = 1,
-          .stageFlags      = vk::ShaderStageFlagBits::eFragment}}
+    vk::DescriptorSetLayoutBinding binding = {
+        .binding         = 0,
+        .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+        .descriptorCount = 1,
+        .stageFlags      = vk::ShaderStageFlagBits::eFragment
     };
 
     // --- Create Descriptor Set Layout --- //
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
-        .bindingCount = bindings.size(), //
-        .pBindings    = bindings.data()  //
+        .bindingCount = 1,       //
+        .pBindings    = &binding //
     };
     _descriptorSetLayout = _vulkanCore.getDevice().createDescriptorSetLayout(layoutInfo);
 }
@@ -65,13 +56,12 @@ void GraphicsPipeline::createDescriptorLayout()
 void GraphicsPipeline::createDescriptorSet()
 {
     // --- Allocate Descriptor Sets --- //
-    std::vector<vk::DescriptorSetLayout> layouts(2 * _framesInFlight, *_descriptorSetLayout);
-    vk::DescriptorSetAllocateInfo        allocInfo{
-        .descriptorPool     = _descriptorPool,
-        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
-        .pSetLayouts        = layouts.data()
+    vk::DescriptorSetAllocateInfo allocInfo{
+        .descriptorPool     = _descriptorPool,       //
+        .descriptorSetCount = 1,                     //
+        .pSetLayouts        = &*_descriptorSetLayout //
     };
-    _descriptorSets = _vulkanCore.getDevice().allocateDescriptorSets(allocInfo);
+    _descriptorSet = std::move(_vulkanCore.getDevice().allocateDescriptorSets(allocInfo).front());
 }
 
 ////////////////////////////////////////////////////////////
@@ -168,81 +158,33 @@ void GraphicsPipeline::createPipeline()
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsPipeline::createUniformBuffers()
-{
-    _uniformBuffers.resize(_framesInFlight);
-
-    for (uint32_t fr = 0; fr < _framesInFlight; fr++)
-    {
-        std::tie(_uniformBuffers[fr].buffer, _uniformBuffers[fr].memory) = _vulkanCore.createBuffer(
-            sizeof(UniformBufferObject),
-            vk::BufferUsageFlagBits::eUniformBuffer,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-        );
-
-        _uniformBuffers[fr].mapped = _uniformBuffers[fr].memory.mapMemory(0, sizeof(UniformBufferObject));
-    }
-}
-
-////////////////////////////////////////////////////////////
-
 void GraphicsPipeline::updateDescriptorSet()
 {
-    for (uint32_t im = 0; im < _images.size(); im++)
-    {
-        for (uint32_t fr = 0; fr < _framesInFlight; fr++)
-        {
-            uint32_t index = descriptorSetIndex(im, fr);
+    vk::DescriptorImageInfo imageInfo{
+        .sampler     = _vulkanImage.getSampler(),              //
+        .imageView   = _vulkanImage.getComputeImageView(),     //
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal //
+    };
+    vk::WriteDescriptorSet descriptorWrite{
+        .dstSet          = _descriptorSet,
+        .dstBinding      = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+        .pImageInfo      = &imageInfo
 
-            vk::DescriptorImageInfo imageInfo{
-                .sampler     = _images[im].getSampler(),               //
-                .imageView   = _images[im].getComputeImageView(),      //
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal //
-            };
-            vk::DescriptorBufferInfo bufferInfo{
-                .buffer = _uniformBuffers[fr].buffer, .offset = 0, .range = sizeof(UniformBufferObject)
-            };
-
-            std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
-                {{.dstSet          = _descriptorSets[index],
-                  .dstBinding      = 0,
-                  .dstArrayElement = 0,
-                  .descriptorCount = 1,
-                  .descriptorType  = vk::DescriptorType::eCombinedImageSampler,
-                  .pImageInfo      = &imageInfo},
-                 {.dstSet          = _descriptorSets[index],
-                  .dstBinding      = 1,
-                  .dstArrayElement = 0,
-                  .descriptorCount = 1,
-                  .descriptorType  = vk::DescriptorType::eUniformBuffer,
-                  .pBufferInfo     = &bufferInfo}}
-            };
-            _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
-        }
-    }
+    };
+    _vulkanCore.getDevice().updateDescriptorSets(descriptorWrite, {});
 }
 
 ////////////////////////////////////////////////////////////
 
-// WIP: still needs to accept changing UBO
-void GraphicsPipeline::updateUniformBuffer(const GraphicsQueue& graphicsQueue, const UniformBufferObject& ubo)
-{
-    uint32_t frameIndex = graphicsQueue.getFrameIndex();
-    std::memcpy(_uniformBuffers[frameIndex].mapped, &ubo, sizeof(UniformBufferObject));
-}
-
-////////////////////////////////////////////////////////////
-
-void GraphicsPipeline::bind(GraphicsQueue& graphicsQueue)
+void GraphicsPipeline::bind(VulkanQueue& graphicsQueue)
 {
     auto& commandBuffer = graphicsQueue.getCommandBuffer();
 
-    uint32_t index = descriptorSetIndex(_images.frontIndex(), graphicsQueue.getFrameIndex());
-
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline);
-    commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSets[index], nullptr
-    );
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSet, nullptr);
 }
 
 ////////////////////////////////////////////////////////////

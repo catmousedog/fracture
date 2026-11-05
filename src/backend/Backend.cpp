@@ -4,16 +4,10 @@
 
 void Backend::update()
 {
-    if (_jobBusy && getJobDone())
-    {
-        onJobDone(); // swap
-        _jobBusy = false;
-    }
-    if (!_jobBusy && _dirty)
+    if (_dirty)
     {
         submitJob(); // recompute
-        _dirty   = false;
-        _jobBusy = true;
+        _dirty = false;
     }
 }
 
@@ -22,9 +16,7 @@ void Backend::update()
 void Backend::resize()
 {
     onResize();
-    _lastJob = {};
-    _jobBusy = false; // image was just recreated
-    _dirty   = true;
+    _dirty = true;
 }
 
 ////////////////////////////////////////////////////////////

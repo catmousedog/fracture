@@ -35,9 +35,9 @@ class VulkanCore
   public:
     void logInfo();
 
-    std::optional<uint32_t> acquireNextImage(class GraphicsQueue* graphicsQueue);
+    std::optional<uint32_t> acquireNextImage(class VulkanQueue* graphicsQueue);
 
-    void prepareImage(class GraphicsQueue* graphicsQueue, uint32_t swapChainIndex);
+    void prepareImage(class VulkanQueue* graphicsQueue, uint32_t swapChainIndex);
 
     bool presentImage(uint32_t swapChainIndex);
 
@@ -60,16 +60,14 @@ class VulkanCore
     vk::raii::Instance&       getInstance() { return _instance; }
     vk::raii::Device&         getDevice() { return _device; }
     vk::raii::PhysicalDevice& getPhysicalDevice() { return _physicalDevice; }
-    uint32_t                  getGraphiscsFamilyIndex() const { return _graphicsIndex; }
-    uint32_t                  getComputeFamilyIndex() const { return _computeIndex; }
-    vk::raii::Queue&          getGraphicsQueue() { return _graphicsQueue; }
-    vk::raii::Queue&          getComputeQueue() { return _computeQueue; }
+    uint32_t                  getFamilyIndex() const { return _familyIndex; }
+    vk::raii::Queue&          getQueue() { return _queue; }
     vk::raii::SwapchainKHR&   getSwapchain() { return _swapchain; }
     vk::Extent2D              getSwapChainExtent() const { return _swapChainExtent; }
     vk::SurfaceFormatKHR&     getSurfaceFormat() { return _surfaceFormat; }
     vk::Image                 getSwapImage(uint32_t swapChainIndex) { return _swapImages[swapChainIndex]; }
     uint32_t                  getSwapImageCount() const { return _swapImageCount; }
-    vk::raii::Semaphore&      getRenderFinishedSemaphore(uint32_t swapChainIndex)
+    vk::raii::Semaphore&      getRenderFinished(uint32_t swapChainIndex)
     {
         return _renderFinishedSemaphores[swapChainIndex];
     }
@@ -92,10 +90,8 @@ class VulkanCore
 #endif
 
     // Queue
-    uint32_t        _graphicsIndex = 0;
-    vk::raii::Queue _graphicsQueue = nullptr;
-    uint32_t        _computeIndex  = 0;
-    vk::raii::Queue _computeQueue  = nullptr;
+    uint32_t        _familyIndex = 0;
+    vk::raii::Queue _queue       = nullptr;
 
     // Swapchain
     vk::raii::SwapchainKHR      _swapchain       = nullptr;

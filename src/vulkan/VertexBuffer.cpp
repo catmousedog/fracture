@@ -2,7 +2,7 @@
 
 ////////////////////////////////////////////////////////////
 
-VertexBuffer::VertexBuffer(VulkanCore& vulkanCore, GraphicsQueue& graphicsQueue)
+VertexBuffer::VertexBuffer(VulkanCore& vulkanCore, VulkanQueue& graphicsQueue)
     : _vulkanCore(vulkanCore),
       _graphicsQueue(graphicsQueue),
 
@@ -83,7 +83,7 @@ void VertexBuffer::createIndexBuffer()
 
 ////////////////////////////////////////////////////////////
 
-void VertexBuffer::draw(GraphicsQueue& graphicsQueue)
+void VertexBuffer::draw(VulkanQueue& graphicsQueue)
 {
     auto& commandBuffer = graphicsQueue.getCommandBuffer();
 

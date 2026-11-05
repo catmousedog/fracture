@@ -1,7 +1,7 @@
 #include "VulkanCore.hpp"
 #include "util/Log.hpp"
 #include "util/Vulkan.hpp"
-#include "vulkan/GraphicsQueue.hpp"
+#include "vulkan/VulkanQueue.hpp"
 
 #include <algorithm>
 #include <vulkan/vulkan_to_string.hpp>
@@ -12,6 +12,8 @@
 
 namespace
 {
+
+constexpr uint32_t DESIRED_SWAPCOUNT = 3;
 
 ////////////////////////////////////////////////////////////
 
@@ -223,40 +225,34 @@ void VulkanCore::createLogicalDevice()
     vector<vk::QueueFamilyProperties> queueFamilies = _physicalDevice.getQueueFamilyProperties();
 
     /* ================= FIND QUEUE FAMILIES ================ */
-    _graphicsIndex = _computeIndex = UINT32_MAX;
+    _familyIndex = UINT32_MAX;
     for (uint32_t i = 0; i < queueFamilies.size(); i++)
     {
         auto& family = queueFamilies[i];
         auto& flags  = family.queueFlags;
 
         bool presentSupport = _physicalDevice.getSurfaceSupportKHR(i, _surface);
-        if (_graphicsIndex == UINT32_MAX && (flags & vk::QueueFlagBits::eGraphics) && presentSupport)
-            _graphicsIndex = i;
-        if (_computeIndex == UINT32_MAX && i != _graphicsIndex && (flags & vk::QueueFlagBits::eCompute) &&
-            !(flags & vk::QueueFlagBits::eGraphics))
-            _computeIndex = i;
+        if (presentSupport && (flags & vk::QueueFlagBits::eGraphics) && (flags & vk::QueueFlagBits::eCompute))
+        {
+            _familyIndex = i;
+            break;
+        }
     }
-    if (_graphicsIndex == UINT32_MAX)
-        FATAL("No graphics+present queue family found");
-    if (_computeIndex == UINT32_MAX)
-        FATAL("No dedicated compute queue family found");
-
-    if (queueFamilies[_computeIndex].timestampValidBits == 0)
-        FATAL("Queue family does not support timestamps");
+    if (_familyIndex == UINT32_MAX)
+        FATAL("No present+graphics+compute queue family found");
 
     // --- Create graphics queue --- //
-    std::array<float, 2>                     priorities = {1.0f, 0.5f}; // [0] graphics, [1] compute
-    std::array<vk::DeviceQueueCreateInfo, 2> queueInfos{
-        {{.queueFamilyIndex = _graphicsIndex, .queueCount = 1, .pQueuePriorities = &priorities[0]},
-         {.queueFamilyIndex = _computeIndex, .queueCount = 1, .pQueuePriorities = &priorities[1]}}
+    float                     priority = 1.0f;
+    vk::DeviceQueueCreateInfo queueInfo{
+        .queueFamilyIndex = _familyIndex, .queueCount = 1, .pQueuePriorities = &priority
     };
 
     const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
     /* ================ CREATE LOGICAL DEVICE =============== */
     vk::DeviceCreateInfo deviceInfo{
-        .queueCreateInfoCount    = 2,
-        .pQueueCreateInfos       = queueInfos.data(),
+        .queueCreateInfoCount    = 1,
+        .pQueueCreateInfos       = &queueInfo,
         .enabledExtensionCount   = 1,
         .ppEnabledExtensionNames = deviceExtensions,
     };
@@ -292,13 +288,12 @@ void VulkanCore::createLogicalDevice()
             deviceFeatures12,          // timeline semaphores
             deviceFeatures13,          // new API features + dynamic rendering
             deviceFeaturesDynamicState // dynamic rendering
-    };
+        };
 
     _device = _physicalDevice.createDevice(chain.get<vk::DeviceCreateInfo>());
 
     // --- Obtain queue --- //
-    _graphicsQueue = _device.getQueue(_graphicsIndex, 0);
-    _computeQueue  = _device.getQueue(_computeIndex, 0);
+    _queue = _device.getQueue(_familyIndex, 0);
 }
 
 ////////////////////////////////////////////////////////////
@@ -319,9 +314,9 @@ void VulkanCore::createSurfaceFormat()
     _surfaceCaps = _physicalDevice.getSurfaceCapabilitiesKHR(_surface);
 
     // image count
-    _swapImageCount = std::max(_surfaceCaps.minImageCount + 1, _surfaceCaps.maxImageCount);
-    if (_swapImageCount == 0)
-        FATAL("Vulkan surface does not support any images");
+    _swapImageCount = std::max(_surfaceCaps.minImageCount, DESIRED_SWAPCOUNT);
+    if (_surfaceCaps.maxImageCount > 0)
+        _swapImageCount = std::min(_swapImageCount, _surfaceCaps.maxImageCount);
 }
 
 ////////////////////////////////////////////////////////////
@@ -342,7 +337,7 @@ void VulkanCore::createSwapchain()
         .imageUsage            = vk::ImageUsageFlagBits::eColorAttachment,
         .imageSharingMode      = vk::SharingMode::eExclusive, // single queue family
         .queueFamilyIndexCount = 1,
-        .pQueueFamilyIndices   = &_graphicsIndex,
+        .pQueueFamilyIndices   = &_familyIndex,
         .preTransform          = _surfaceCaps.currentTransform,
         .compositeAlpha        = vk::CompositeAlphaFlagBitsKHR::eOpaque,
         .presentMode           = vk::PresentModeKHR::eFifo, // vsync, always supported
@@ -464,7 +459,7 @@ void VulkanCore::logInfo()
 
 ////////////////////////////////////////////////////////////
 
-std::optional<uint32_t> VulkanCore::acquireNextImage(GraphicsQueue* graphicsQueue)
+std::optional<uint32_t> VulkanCore::acquireNextImage(VulkanQueue* graphicsQueue)
 {
     auto [acquireResult, swapChainIndex] =
         _swapchain.acquireNextImage(UINT64_MAX, *graphicsQueue->getPresentCompleteSemaphore(), nullptr);
@@ -482,7 +477,7 @@ std::optional<uint32_t> VulkanCore::acquireNextImage(GraphicsQueue* graphicsQueu
 
 ////////////////////////////////////////////////////////////
 
-void VulkanCore::prepareImage(GraphicsQueue* graphicsQueue, uint32_t swapChainIndex)
+void VulkanCore::prepareImage(VulkanQueue* graphicsQueue, uint32_t swapChainIndex)
 {
     auto& commandBuffer = graphicsQueue->getCommandBuffer();
 
@@ -545,7 +540,7 @@ bool VulkanCore::presentImage(uint32_t swapChainIndex)
         .pSwapchains        = &*_swapchain,
         .pImageIndices      = &swapChainIndex
     };
-    auto presentResult = _graphicsQueue.presentKHR(presentInfoKHR);
+    auto presentResult = _queue.presentKHR(presentInfoKHR);
 
     // recreate swapchain if out-of-date or if window was resized
     if (presentResult == vk::Result::eErrorOutOfDateKHR || (_window->getSize() != _swapChainExtent))

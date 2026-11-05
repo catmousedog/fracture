@@ -1,32 +1,20 @@
 #pragma once
 
-#include "util/Swappable.hpp"
 #include "vulkan/VulkanImage.hpp"
 
 #include <glm/glm.hpp>
 
 class GraphicsPipeline
 {
-    /* ==================== NESTED CLASS ==================== */
-  public:
-    struct UniformBufferObject
-    {
-        alignas(8) glm::vec2 offset, prevOffset;
-        alignas(4) float zoom, prevZoom;
-        alignas(4) float aspect;
-    };
-
     /* ======================== SETUP ======================= */
   public:
-    GraphicsPipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images, uint32_t framesInFlight);
+    GraphicsPipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage);
 
     /* ================== PUBLIC FUNCTIONS ================== */
 
     void updateDescriptorSet();
 
-    void updateUniformBuffer(const GraphicsQueue& graphicsQueue, const UniformBufferObject&);
-
-    void bind(GraphicsQueue& graphicsQueue);
+    void bind(VulkanQueue& graphicsQueue);
 
     /* ================== HELPER FUNCTIONS ================== */
   private:
@@ -38,30 +26,15 @@ class GraphicsPipeline
 
     void createPipeline();
 
-    void createUniformBuffers();
-
-    uint32_t descriptorSetIndex(uint32_t image, uint32_t frame) const { return image * _framesInFlight + frame; }
-
     /* ====================== VARIABLES ===================== */
 
-    VulkanCore&             _vulkanCore;
-    Swappable<VulkanImage>& _images;
-
-    uint32_t _framesInFlight;
+    VulkanCore&  _vulkanCore;
+    VulkanImage& _vulkanImage;
 
     vk::raii::PipelineLayout _pipelineLayout = nullptr;
     vk::raii::Pipeline       _pipeline       = nullptr;
 
     vk::raii::DescriptorPool      _descriptorPool      = nullptr;
     vk::raii::DescriptorSetLayout _descriptorSetLayout = nullptr;
-
-    struct UniformBuffer
-    {
-        vk::raii::Buffer       buffer = nullptr;
-        vk::raii::DeviceMemory memory = nullptr;
-        void*                  mapped = nullptr;
-    };
-    // one for each frame-in-flight
-    vector<UniformBuffer>           _uniformBuffers = {};
-    vector<vk::raii::DescriptorSet> _descriptorSets = {};
+    vk::raii::DescriptorSet       _descriptorSet       = nullptr;
 };

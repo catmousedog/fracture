@@ -8,9 +8,7 @@ Fracture::Fracture()
     : _vulkanCore(&_window),
       _renderer(_vulkanCore, &_window),
       _ui(_settings),
-      _backend(
-          std::make_unique<GPUBackend>(_vulkanCore, _renderer.getImages(), _renderer.getGraphicsQueue(), _settings)
-      )
+      _backend(std::make_unique<GPUBackend>(_vulkanCore, _renderer.getImage(), _renderer.getGraphicsQueue(), _settings))
 {
     _prevSettings = _settings;
 }

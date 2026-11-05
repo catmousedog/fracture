@@ -1,44 +1,31 @@
-#include "GraphicsQueue.hpp"
+#include "VulkanQueue.hpp"
 
 #include "util/Log.hpp"
 
 ////////////////////////////////////////////////////////////
 
-GraphicsQueue::GraphicsQueue(VulkanCore& vulkanCore, uint32_t framesInFlight)
+VulkanQueue::VulkanQueue(VulkanCore& vulkanCore, uint32_t framesInFlight)
     : _vulkanCore(vulkanCore),
       _framesInFlight(std::clamp(framesInFlight, 1u, vulkanCore.getSwapImageCount()))
 {
-    createRenderDoneSemaphore();
     createCommandPool();
     createFrameWorkers();
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::createRenderDoneSemaphore()
-{
-    vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo> chain{
-        {},
-        {.semaphoreType = vk::SemaphoreType::eTimeline, .initialValue = 0},
-    };
-    _renderDone = vk::raii::Semaphore(_vulkanCore.getDevice(), chain.get<vk::SemaphoreCreateInfo>());
-}
-
-////////////////////////////////////////////////////////////
-
-void GraphicsQueue::createCommandPool()
+void VulkanQueue::createCommandPool()
 {
     // --- Create Command Pool --- //
     vk::CommandPoolCreateInfo poolInfo{
-        .flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-        .queueFamilyIndex = _vulkanCore.getGraphiscsFamilyIndex()
+        .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, .queueFamilyIndex = _vulkanCore.getFamilyIndex()
     };
     _commandPool = vk::raii::CommandPool(_vulkanCore.getDevice(), poolInfo);
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::createFrameWorkers()
+void VulkanQueue::createFrameWorkers()
 {
     for (uint32_t i = 0; i < _framesInFlight; i++)
         _frameWorkers.emplace_back(*this);
@@ -46,60 +33,50 @@ void GraphicsQueue::createFrameWorkers()
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::submit(
-    vk::raii::Semaphore& renderFinishedSemaphore, std::optional<vk::SemaphoreSubmitInfo> frontReady
-)
+void VulkanQueue::submit(uint32_t swapChainIndex)
 {
     auto& frameWorker = _frameWorkers[_frameIndex];
 
     // wait until the swapchain image is acquired (binary, value ignored)
-    std::array<vk::SemaphoreSubmitInfo, 2> waitInfos{
-        // binary: the swapchain image is acquired (value ignored)
-        vk::SemaphoreSubmitInfo{
-            .semaphore = frameWorker.presentCompleteSemaphore,
-            .stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        },
+    // binary: the swapchain image is acquired (value ignored)
+    vk::SemaphoreSubmitInfo waitInfo{
+        .semaphore = frameWorker.presentCompleteSemaphore,
+        .stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
     };
-    // wait for front ready (if any)
-    uint32_t waitCount = 1;
-    if (frontReady)
-        waitInfos[waitCount++] = *frontReady;
 
-    vk::SemaphoreSubmitInfo signalInfos[] = {
-        // binary, for present (present cannot wait on a timeline)
-        {.semaphore = renderFinishedSemaphore, .stageMask = vk::PipelineStageFlagBits2::eAllCommands},
-        // timeline, reaches _frameNumber when this frame's work is done
-        {.semaphore = _renderDone, .value = ++_frameNumber, .stageMask = vk::PipelineStageFlagBits2::eAllCommands},
+    vk::SemaphoreSubmitInfo signalInfo{
+        .semaphore = _vulkanCore.getRenderFinished(swapChainIndex),
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands
     };
 
     vk::CommandBufferSubmitInfo commandBufferInfo{.commandBuffer = frameWorker.commandBuffer};
 
     vk::SubmitInfo2 submitInfo{
-        .waitSemaphoreInfoCount   = waitCount,
-        .pWaitSemaphoreInfos      = waitInfos.data(),
+        .waitSemaphoreInfoCount   = 1,
+        .pWaitSemaphoreInfos      = &waitInfo,
         .commandBufferInfoCount   = 1,
         .pCommandBufferInfos      = &commandBufferInfo,
-        .signalSemaphoreInfoCount = 2,
-        .pSignalSemaphoreInfos    = signalInfos,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos    = &signalInfo
     };
 
     // unsignal fence, before submitting to avoid deadlock (if unsignaled and eErrorOutOfDateKHR)
     _vulkanCore.getDevice().resetFences(*frameWorker.drawFence);
-    _vulkanCore.getGraphicsQueue().submit2(submitInfo, *frameWorker.drawFence);
+    _vulkanCore.getQueue().submit2(submitInfo, *frameWorker.drawFence);
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::dispatch(uint32_t groupX, uint32_t groupY, uint32_t groupZ)
+void VulkanQueue::dispatch(uint32_t groupX, uint32_t groupY, uint32_t groupZ)
 {
     _frameWorkers[_frameIndex].commandBuffer.dispatch(groupX, groupY, groupZ);
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::singleCommand(std::function<void(vk::raii::CommandBuffer&)> command)
+void VulkanQueue::singleCommand(std::function<void(vk::raii::CommandBuffer&)> command)
 {
-    auto& queue = _vulkanCore.getGraphicsQueue();
+    auto& queue = _vulkanCore.getQueue();
 
     // --- Create Command Buffer --- //
     vk::raii::CommandBuffer commandBuffer = createCommandBuffer();
@@ -119,35 +96,35 @@ void GraphicsQueue::singleCommand(std::function<void(vk::raii::CommandBuffer&)> 
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::reset()
+void VulkanQueue::reset()
 {
     _frameWorkers[_frameIndex].commandBuffer.reset({});
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::begin()
+void VulkanQueue::begin()
 {
     _frameWorkers[_frameIndex].commandBuffer.begin({});
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::endRendering()
+void VulkanQueue::endRendering()
 {
     _frameWorkers[_frameIndex].commandBuffer.endRendering();
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::end()
+void VulkanQueue::end()
 {
     _frameWorkers[_frameIndex].commandBuffer.end();
 }
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::waitForFences()
+void VulkanQueue::waitForFences()
 {
     auto& frameWorker = _frameWorkers[_frameIndex];
 
@@ -158,14 +135,14 @@ void GraphicsQueue::waitForFences()
 
 ////////////////////////////////////////////////////////////
 
-void GraphicsQueue::nextFrame()
+void VulkanQueue::nextFrame()
 {
     _frameIndex = (_frameIndex + 1) % _framesInFlight;
 }
 
 ////////////////////////////////////////////////////////////
 
-vk::raii::CommandBuffer GraphicsQueue::createCommandBuffer()
+vk::raii::CommandBuffer VulkanQueue::createCommandBuffer()
 {
     // --- Allocate Command Buffers --- //
     vk::CommandBufferAllocateInfo allocInfo{
@@ -176,7 +153,7 @@ vk::raii::CommandBuffer GraphicsQueue::createCommandBuffer()
 
 ////////////////////////////////////////////////////////////
 
-GraphicsQueue::FrameWorker::FrameWorker(GraphicsQueue& graphicsQueue)
+VulkanQueue::FrameWorker::FrameWorker(VulkanQueue& graphicsQueue)
 
 {
     auto& device = graphicsQueue._vulkanCore.getDevice();

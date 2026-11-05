@@ -1,13 +1,12 @@
 #pragma once
 
-#include "util/Swappable.hpp"
-#include "vulkan/GraphicsQueue.hpp"
+#include "vulkan/VulkanQueue.hpp"
 
 class VulkanImage
 {
     /* ======================== SETUP ======================= */
   public:
-    VulkanImage(VulkanCore& vulkanCore, GraphicsQueue& graphicsQueue);
+    VulkanImage(VulkanCore& vulkanCore, VulkanQueue& graphicsQueue);
 
   private:
     void createComputeImage();
@@ -26,8 +25,8 @@ class VulkanImage
 
     /* ====================== VARIABLES ===================== */
   private:
-    VulkanCore&    _vulkanCore;
-    GraphicsQueue& _graphicsQueue;
+    VulkanCore&  _vulkanCore;
+    VulkanQueue& _graphicsQueue;
 
     // Compute image
     vk::raii::Image        _computeImage       = nullptr;

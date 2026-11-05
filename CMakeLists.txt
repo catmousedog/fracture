@@ -15,6 +15,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+# Create symbolic link to compile_commands
+file(CREATE_LINK
+    ${CMAKE_BINARY_DIR}/compile_commands.json
+    ${CMAKE_SOURCE_DIR}/compile_commands.json
+    SYMBOLIC)
+
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 find_package(Vulkan REQUIRED)

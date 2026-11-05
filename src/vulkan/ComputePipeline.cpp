@@ -3,9 +3,9 @@
 
 ////////////////////////////////////////////////////////////
 
-ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, Swappable<VulkanImage>& images, FractalType fractalType)
+ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage, FractalType fractalType)
     : _vulkanCore(vulkanCore),
-      _images(images)
+      _vulkanImage(vulkanImage)
 {
     createDescriptorPool();
     createDescriptorLayout();
@@ -59,7 +59,7 @@ void ComputePipeline::createDescriptorSet()
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
         .pSetLayouts        = layouts.data()
     };
-    _descriptorSet = _vulkanCore.getDevice().allocateDescriptorSets(allocInfo);
+    _descriptorSet = std::move(_vulkanCore.getDevice().allocateDescriptorSets(allocInfo).front());
 
     // --- Update Allocated Descriptor --- //
     updateDescriptorSet();
@@ -99,21 +99,18 @@ void ComputePipeline::updatePipeline(uint32_t pushConstantSize)
 
 void ComputePipeline::updateDescriptorSet()
 {
-    for (uint32_t i = 0; i < _images.size(); ++i)
-    {
-        vk::DescriptorImageInfo imageInfo{
-            .imageView   = _images[i].getComputeImageView(), //
-            .imageLayout = vk::ImageLayout::eGeneral         //
-        };
-        vk::WriteDescriptorSet descriptorWrites{
-            .dstSet          = _descriptorSet[i],
-            .dstBinding      = 0,
-            .descriptorCount = 1,
-            .descriptorType  = vk::DescriptorType::eStorageImage,
-            .pImageInfo      = &imageInfo
-        };
-        _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
-    }
+    vk::DescriptorImageInfo imageInfo{
+        .imageView   = _vulkanImage.getComputeImageView(), //
+        .imageLayout = vk::ImageLayout::eGeneral           //
+    };
+    vk::WriteDescriptorSet descriptorWrites{
+        .dstSet          = _descriptorSet,
+        .dstBinding      = 0,
+        .descriptorCount = 1,
+        .descriptorType  = vk::DescriptorType::eStorageImage,
+        .pImageInfo      = &imageInfo
+    };
+    _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
 }
 
 ////////////////////////////////////////////////////////////
@@ -126,15 +123,13 @@ void ComputePipeline::readShader(FractalType fractalType)
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::bind(ComputeQueue& computeQueue)
+void ComputePipeline::bind(VulkanQueue& computeQueue)
 {
     auto& commandBuffer = computeQueue.getCommandBuffer();
 
     // --- Bind Descriptor Set --- //
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_pipeline);
-    commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eCompute, _pipelineLayout, 0, *_descriptorSet[_images.backIndex()], nullptr
-    );
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, _pipelineLayout, 0, *_descriptorSet, nullptr);
 }
 
 ////////////////////////////////////////////////////////////

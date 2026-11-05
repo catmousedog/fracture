@@ -5,7 +5,7 @@
 
 ////////////////////////////////////////////////////////////
 
-VulkanImage::VulkanImage(VulkanCore& vulkanCore, GraphicsQueue& graphicsQueue)
+VulkanImage::VulkanImage(VulkanCore& vulkanCore, VulkanQueue& graphicsQueue)
     : _vulkanCore(vulkanCore),
       _graphicsQueue(graphicsQueue)
 {
@@ -23,20 +23,17 @@ void VulkanImage::createComputeImage()
     constexpr vk::Format format = vk::Format::eR8G8B8A8Unorm;
 
     /* ==================== CREATE IMAGE ==================== */
-    std::array<uint32_t, 2> families = {_vulkanCore.getComputeFamilyIndex(), _vulkanCore.getGraphiscsFamilyIndex()};
-    vk::ImageCreateInfo     imageInfo{
-        .imageType             = vk::ImageType::e2D,
-        .format                = format,
-        .extent                = {_extent.width, _extent.height, 1},
-        .mipLevels             = 1,
-        .arrayLayers           = 1,
-        .samples               = vk::SampleCountFlagBits::e1,
-        .tiling                = vk::ImageTiling::eOptimal,
-        .usage                 = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
-        .sharingMode           = vk::SharingMode::eConcurrent,
-        .queueFamilyIndexCount = families.size(),
-        .pQueueFamilyIndices   = families.data(),
-        .initialLayout         = vk::ImageLayout::eUndefined
+    vk::ImageCreateInfo imageInfo{
+        .imageType     = vk::ImageType::e2D,
+        .format        = format,
+        .extent        = {_extent.width, _extent.height, 1},
+        .mipLevels     = 1,
+        .arrayLayers   = 1,
+        .samples       = vk::SampleCountFlagBits::e1,
+        .tiling        = vk::ImageTiling::eOptimal,
+        .usage         = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
+        .sharingMode   = vk::SharingMode::eExclusive,
+        .initialLayout = vk::ImageLayout::eUndefined
     };
     _computeImage = vk::raii::Image(device, imageInfo);
 
