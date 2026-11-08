@@ -3,14 +3,14 @@
 
 ////////////////////////////////////////////////////////////
 
-ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage, FractalType fractalType)
+ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage, const Backend::Settings& settings)
     : _vulkanCore(vulkanCore),
       _vulkanImage(vulkanImage)
 {
     createDescriptorPool();
     createDescriptorLayout();
     createDescriptorSet();
-    readShader(fractalType);
+    readShader(settings);
 }
 
 ////////////////////////////////////////////////////////////
@@ -115,10 +115,13 @@ void ComputePipeline::updateDescriptorSet()
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::readShader(FractalType fractalType)
+void ComputePipeline::readShader(const Backend::Settings& settings)
 {
-    std::vector<uint32_t> code = compileComputeShader("compute", toString(fractalType));
-    _shader                    = _vulkanCore.createShaderModule(code);
+    string                fractalName  = settings.fractal.toString();
+    string                functionName = settings.function.toString();
+    string                filterName   = settings.filter.toString();
+    std::vector<uint32_t> code         = compileComputeShader("compute", fractalName, functionName, filterName);
+    _shader                            = _vulkanCore.createShaderModule(code);
 }
 
 ////////////////////////////////////////////////////////////

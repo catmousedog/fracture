@@ -20,7 +20,7 @@ void VulkanImage::createComputeImage()
     _extent      = _vulkanCore.getSwapChainExtent();
     auto& device = _vulkanCore.getDevice();
 
-    constexpr vk::Format format = vk::Format::eR8G8B8A8Unorm;
+    constexpr vk::Format format = vk::Format::eR16G16B16A16Sfloat;
 
     /* ==================== CREATE IMAGE ==================== */
     vk::ImageCreateInfo imageInfo{

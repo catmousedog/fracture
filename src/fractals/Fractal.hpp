@@ -1,23 +1,43 @@
 #pragma once
 
-#include "util/Basics.hpp"
-
+#include <array>
 #include <cstdint>
+#include <string>
 
-enum class FractalType : uint32_t
-{
-    Mandelbrot,
-    BurningShip
-};
-
-string toString(FractalType type);
+// generalize into smart enum template?
 
 struct Fractal
 {
-    FractalType type    = FractalType::Mandelbrot;
-    float       offsetX = 0.0f, offsetY = 0.0f;
-    float       zoom    = 1.0f;
-    float       maxIter = 100;
+    // plain enum uses enclosing scope Fractal::
+    enum Value : uint32_t
+    {
+        Mandelbrot,
+        BurningShip
+    };
 
-    bool operator==(const Fractal& other) const = default;
+    // make type non-aggregate
+    constexpr Fractal(Value v)
+        : value(v)
+    {
+    }
+
+    // allow implicit conversion
+    constexpr operator Value() const { return value; }
+
+    constexpr std::string toString() const
+    {
+        switch (value)
+        {
+        case Mandelbrot:
+            return "Mandelbrot";
+        case BurningShip:
+            return "BurningShip";
+        }
+        return "";
+    }
+
+    Value value;
+
+    static constexpr std::array<Value, 2> all{Mandelbrot, BurningShip};
 };
+static_assert(sizeof(Fractal) == sizeof(uint32_t));

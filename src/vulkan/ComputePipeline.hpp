@@ -1,5 +1,6 @@
 #pragma once
 
+#include "backend/Backend.hpp"
 #include "fractals/Fractal.hpp"
 #include "vulkan/VulkanImage.hpp"
 
@@ -7,7 +8,7 @@ class ComputePipeline
 {
     /* ======================== SETUP ======================= */
   public:
-    ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage, FractalType fractalType);
+    ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage, const Backend::Settings& settings);
 
   private:
     void createDescriptorPool();
@@ -29,7 +30,7 @@ class ComputePipeline
 
     void updateDescriptorSet();
 
-    void readShader(FractalType fractalType);
+    void readShader(const Backend::Settings& settings);
 
     void bind(VulkanQueue& computeQueue);
 

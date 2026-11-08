@@ -1,6 +1,8 @@
 #pragma once
 
+#include "fractals/Filter.hpp"
 #include "fractals/Fractal.hpp"
+#include "fractals/Function.hpp"
 
 #include <glm/glm.hpp>
 
@@ -14,7 +16,14 @@ class Backend
     // Settings used to store the current state of the backend
     struct Settings
     {
-        Fractal fractal;
+        Fractal fractal = Fractal::Mandelbrot;
+        float   offsetX = 0.0f, offsetY = 0.0f;
+        float   zoom    = 1.0f;
+        float   maxIter = 100;
+
+        Function function = Function::Iterative;
+
+        Filter filter = Filter::GrayScale;
 
         bool operator==(const Settings& other) const = default;
     };

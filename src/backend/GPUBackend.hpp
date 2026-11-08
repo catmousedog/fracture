@@ -31,7 +31,7 @@ class GPUBackend : public Backend
 
     virtual void submitJob() override;
 
-    Constants makeConstants(const Fractal& fractal, float aspect);
+    Constants makeConstants(const Settings& settings, float aspect);
 
     /* ====================== VARIABLES ===================== */
 

@@ -10,7 +10,7 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, VulkanImage& vulkanImage, VulkanQ
       _vulkanCore(vulkanCore),
       _vulkanImage(vulkanImage),
       _vulkanQueue(vulkanQueue),
-      _computePipeline(_vulkanCore, vulkanImage, _settings.fractal.type)
+      _computePipeline(_vulkanCore, vulkanImage, _settings)
 {
     _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
 
@@ -42,7 +42,7 @@ void GPUBackend::onResize()
 
 void GPUBackend::onFractalChange()
 {
-    _computePipeline.readShader(_settings.fractal.type);
+    _computePipeline.readShader(_settings);
     _computePipeline.updatePipeline(sizeof(Constants));
 }
 
@@ -90,7 +90,7 @@ void GPUBackend::submitJob()
     );
 
     // --- Bind Pipeline --- //
-    Constants constants = makeConstants(_settings.fractal, aspect);
+    Constants constants = makeConstants(_settings, aspect);
     _computePipeline.pushConstants(_vulkanQueue, constants);
     _computePipeline.bind(_vulkanQueue);
 
@@ -119,13 +119,13 @@ void GPUBackend::submitJob()
 
 ////////////////////////////////////////////////////////////
 
-GPUBackend::Constants GPUBackend::makeConstants(const Fractal& fractal, float aspect)
+GPUBackend::Constants GPUBackend::makeConstants(const Settings& settings, float aspect)
 {
     Constants constants;
 
-    constants.offset  = glm::vec2(fractal.offsetX, fractal.offsetY);
-    constants.zoom    = fractal.zoom;
-    constants.maxIter = (int)fractal.maxIter;
+    constants.offset  = glm::vec2(settings.offsetX, settings.offsetY);
+    constants.zoom    = settings.zoom;
+    constants.maxIter = (int)settings.maxIter;
     constants.aspect  = aspect;
 
     return constants;

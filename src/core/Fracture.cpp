@@ -44,23 +44,23 @@ void Fracture::updateFractal(const Window::Input& input)
         if (input.ctrl)
         {
             float iterFactor = std::pow(1.1f, input.scroll);
-            _settings.fractal.maxIter *= iterFactor;
-            _settings.fractal.maxIter = std::max(_settings.fractal.maxIter, 1.f);
+            _settings.maxIter *= iterFactor;
+            _settings.maxIter = std::max(_settings.maxIter, 1.f);
         }
         else
         {
             float zoomFactor = std::pow(1.1f, -input.scroll);
-            float oldZoom    = _settings.fractal.zoom;
+            float oldZoom    = _settings.zoom;
             float newZoom    = oldZoom * zoomFactor;
 
-            _settings.fractal.offsetX += input.mouseX * (oldZoom - newZoom);
-            _settings.fractal.offsetY += input.mouseY * (oldZoom - newZoom);
-            _settings.fractal.zoom = newZoom;
+            _settings.offsetX += input.mouseX * (oldZoom - newZoom);
+            _settings.offsetY += input.mouseY * (oldZoom - newZoom);
+            _settings.zoom = newZoom;
         }
     }
     // DRAG
-    _settings.fractal.offsetX -= input.dragX * _settings.fractal.zoom;
-    _settings.fractal.offsetY -= input.dragY * _settings.fractal.zoom;
+    _settings.offsetX -= input.dragX * _settings.zoom;
+    _settings.offsetY -= input.dragY * _settings.zoom;
 }
 
 ////////////////////////////////////////////////////////////
@@ -68,16 +68,19 @@ void Fracture::updateFractal(const Window::Input& input)
 void Fracture::updateBackend()
 {
     // Fractal type changed
-    if (_settings.fractal.type != _prevSettings.fractal.type)
+    if (_settings.fractal != _prevSettings.fractal || _settings.function != _prevSettings.function ||
+        _settings.filter != _prevSettings.filter)
     {
-        _prevSettings.fractal.type = _settings.fractal.type;
+        _prevSettings.fractal  = _settings.fractal;
+        _prevSettings.function = _settings.function;
+        _prevSettings.filter   = _settings.filter;
         _backend->changeFractal();
     }
 
     // other Fractal settings changed
-    if (_settings.fractal != _prevSettings.fractal)
+    if (_settings != _prevSettings)
     {
-        _prevSettings.fractal = _settings.fractal;
+        _prevSettings = _settings;
         _backend->markDirty();
     }
 }

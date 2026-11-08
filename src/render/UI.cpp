@@ -4,9 +4,7 @@
 
 #include "imgui.h"
 
-#include <array>
 #include <chrono>
-#include <utility>
 
 ////////////////////////////////////////////////////////////
 
@@ -17,6 +15,20 @@ constexpr float  collapseButtonSize = 32.0f;
 constexpr ImVec4 bgColor            = ImVec4(.1f, .1f, .2f, .5f);
 constexpr ImVec4 bgColorFocused     = ImVec4(.1f, .1f, .2f, 1.f);
 constexpr ImVec4 bgColorHighlight   = ImVec4(.2f, .2f, .3f, 1.f);
+
+template <typename T>
+void enumListBox(const char* label, T& current)
+{
+    const float h =
+        ImGui::GetTextLineHeightWithSpacing() * (T::all.size() + 0.25f) + ImGui::GetStyle().FramePadding.y * 2.0f;
+    if (ImGui::BeginListBox(label, ImVec2(0, h)))
+    {
+        for (T t : T::all)
+            if (ImGui::Selectable(t.toString().data(), t == current))
+                current = t;
+        ImGui::EndListBox();
+    }
+}
 
 } // namespace
 
@@ -88,26 +100,33 @@ void UI::draw(const Backend::Stats& stats)
 
         // --- Fractal Settings --- //
         ImGui::Text("Fractal Settings");
-        constexpr std::array<const char*, 2> fractalTypes = {"Mandelbrot", "BurningShip"};
-        int                                  fractalType  = std::to_underlying(_settings.fractal.type);
-        if (ImGui::ListBox("Fractal", &fractalType, fractalTypes.data(), fractalTypes.size(), fractalTypes.size()))
-            _settings.fractal.type = static_cast<FractalType>(fractalType);
+        enumListBox("Fractal", _settings.fractal);
+        ImGui::Separator();
+
+        // --- Function Settings --- //
+        ImGui::Text("Function Settings");
+        enumListBox("Function", _settings.function);
+        ImGui::Separator();
+
+        // --- Filter Settings --- //
+        ImGui::Text("Filter Settings");
+        enumListBox("Filter", _settings.filter);
         ImGui::Separator();
 
         auto ns = std::chrono::nanoseconds{(long long)stats.ns};
         ImGui::Text("Render time: %s", Time::formatTime<std::chrono::microseconds>(ns).c_str());
 
-        ImGui::DragFloat("Offset X", &_settings.fractal.offsetX, 0.01f * _settings.fractal.zoom);
-        ImGui::DragFloat("Offset Y", &_settings.fractal.offsetY, 0.01f * _settings.fractal.zoom);
+        ImGui::DragFloat("Offset X", &_settings.offsetX, 0.01f * _settings.zoom);
+        ImGui::DragFloat("Offset Y", &_settings.offsetY, 0.01f * _settings.zoom);
 
-        ImGui::SliderFloat("Zoom", &_settings.fractal.zoom, 1e-5f, 4.0f, "%.6f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("Zoom", &_settings.zoom, 1e-5f, 4.0f, "%.6f", ImGuiSliderFlags_Logarithmic);
 
-        int maxIter = _settings.fractal.maxIter;
+        int maxIter = _settings.maxIter;
         if (ImGui::InputInt("Max Iterations", &maxIter))
-            _settings.fractal.maxIter = maxIter;
+            _settings.maxIter = maxIter;
 
         if (ImGui::Button("Reset"))
-            _settings.fractal = Fractal{};
+            _settings = Backend::Settings{};
 
         /* ====================== UI - END ====================== */
 

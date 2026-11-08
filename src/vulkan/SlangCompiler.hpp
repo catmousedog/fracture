@@ -3,4 +3,4 @@
 #include "util/Basics.hpp"
 #include <cstdint>
 
-vector<uint32_t> compileComputeShader(string shaderName, string fractalName);
+vector<uint32_t> compileComputeShader(string shaderName, string fractalName, string functionName, string filterName);

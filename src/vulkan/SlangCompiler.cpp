@@ -4,10 +4,8 @@
 #include <slang.h>
 using Slang::ComPtr;
 
-vector<uint32_t> compileComputeShader(string shaderName, string fractalName)
+vector<uint32_t> compileComputeShader(string shaderName, string fractalName, string functionName, string filterName)
 {
-    string colorName = "GrayScale";
-
     // once, at startup
     ComPtr<slang::IGlobalSession> global;
     slang::createGlobalSession(global.writeRef());
@@ -39,8 +37,11 @@ vector<uint32_t> compileComputeShader(string shaderName, string fractalName)
                      "export struct Fractal : IFractal = " +
                      fractalName +
                      ";\n"
+                     "export struct Function : IFunction = " +
+                     functionName +
+                     ";\n"
                      "export struct Color : IColor = " +
-                     colorName + ";\n";
+                     filterName + ";\n";
 
     ComPtr<slang::IBlob> diag;
     slang::IModule*      mod = session->loadModule(shaderName.c_str(), diag.writeRef());
