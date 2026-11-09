@@ -3,6 +3,7 @@
 #include "fractals/Filter.hpp"
 #include "fractals/Fractal.hpp"
 #include "fractals/Function.hpp"
+#include "fractals/Precision.hpp"
 
 #include <glm/glm.hpp>
 
@@ -16,10 +17,12 @@ class Backend
     // Settings used to store the current state of the backend
     struct Settings
     {
+        Precision precision = Precision::Float;
+
         Fractal fractal = Fractal::Mandelbrot;
-        float   offsetX = 0.0f, offsetY = 0.0f;
-        float   zoom    = 1.0f;
-        float   maxIter = 100;
+        double  offsetX = 0.0f, offsetY = 0.0f;
+        double  zoom    = 1.0f;
+        int     maxIter = 100;
 
         Function function = Function::Iterative;
 

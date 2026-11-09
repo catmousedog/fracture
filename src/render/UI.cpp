@@ -94,8 +94,9 @@ void UI::draw(const Backend::Stats& stats)
 
         /* ===================== UI - BEGIN ===================== */
 
-        // --- Backend Settings --- //
-        ImGui::Text("Backend Settings");
+        // --- Precision Settings --- //
+        ImGui::Text("Precision Settings");
+        enumListBox("Precision", _settings.precision);
         ImGui::Separator();
 
         // --- Fractal Settings --- //
@@ -116,10 +117,13 @@ void UI::draw(const Backend::Stats& stats)
         auto ns = std::chrono::nanoseconds{(long long)stats.ns};
         ImGui::Text("Render time: %s", Time::formatTime<std::chrono::microseconds>(ns).c_str());
 
-        ImGui::DragFloat("Offset X", &_settings.offsetX, 0.01f * _settings.zoom);
-        ImGui::DragFloat("Offset Y", &_settings.offsetY, 0.01f * _settings.zoom);
+        ImGui::DragScalar("Offset X", ImGuiDataType_Double, &_settings.offsetX, 0.01 * _settings.zoom);
+        ImGui::DragScalar("Offset Y", ImGuiDataType_Double, &_settings.offsetY, 0.01 * _settings.zoom);
 
-        ImGui::SliderFloat("Zoom", &_settings.zoom, 1e-5f, 4.0f, "%.6f", ImGuiSliderFlags_Logarithmic);
+        double zMin = 1e-15, zMax = 4.0;
+        ImGui::SliderScalar(
+            "Zoom", ImGuiDataType_Double, &_settings.zoom, &zMin, &zMax, "%.3e", ImGuiSliderFlags_Logarithmic
+        );
 
         int maxIter = _settings.maxIter;
         if (ImGui::InputInt("Max Iterations", &maxIter))

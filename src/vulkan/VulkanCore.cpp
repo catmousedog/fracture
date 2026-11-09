@@ -257,14 +257,7 @@ void VulkanCore::createLogicalDevice()
         .ppEnabledExtensionNames = deviceExtensions,
     };
 
-    // auto features = _physicalDevice.getFeatures2().features;
-    // if (!features.shaderFloat64)
-    //     FATAL("Device does not support doubles in shaders!");
-    // vk::PhysicalDeviceFeatures2 deviceFeatures2{
-    //     .features = {
-    //         .shaderFloat64 = true // doubles in shader
-    //     }
-    // };
+    vk::PhysicalDeviceFeatures2        deviceFeatures2{.features = {.shaderFloat64 = hasShaderFloat64()}};
     vk::PhysicalDeviceVulkan12Features deviceFeatures12{
         .timelineSemaphore = true // timeline semaphores
     };
@@ -278,17 +271,17 @@ void VulkanCore::createLogicalDevice()
 
     vk::StructureChain<
         vk::DeviceCreateInfo,
-        // vk::PhysicalDeviceFeatures2,
+        vk::PhysicalDeviceFeatures2,
         vk::PhysicalDeviceVulkan12Features,
         vk::PhysicalDeviceVulkan13Features,
         vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
         chain{
             deviceInfo,                //
-                                       // deviceFeatures2,           // 64-bit floats in shaders
+            deviceFeatures2,           // 64-bit floats in shaders
             deviceFeatures12,          // timeline semaphores
             deviceFeatures13,          // new API features + dynamic rendering
             deviceFeaturesDynamicState // dynamic rendering
-        };
+    };
 
     _device = _physicalDevice.createDevice(chain.get<vk::DeviceCreateInfo>());
 

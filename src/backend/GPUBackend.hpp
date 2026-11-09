@@ -1,22 +1,14 @@
 #pragma once
 
 #include "backend/Backend.hpp"
+#include "fractals/Precision.hpp"
 #include "vulkan/ComputePipeline.hpp"
 
+#include <concepts>
 #include <glm/glm.hpp>
 
 class GPUBackend : public Backend
 {
-    /* ==================== NESTED CLASS ==================== */
-  private:
-    struct Constants
-    {
-        alignas(8) glm::vec2 offset = {0.0f, 0.0f};
-        alignas(4) float zoom       = 1.0f;
-        alignas(4) int maxIter      = 100;
-        alignas(4) float aspect     = 1.0f;
-    };
-
     /* ======================== SETUP ======================= */
   public:
     GPUBackend(VulkanCore& vulkanCore, VulkanImage& vulkanImage, VulkanQueue& vulkanQueue, Settings& settings);
@@ -30,8 +22,6 @@ class GPUBackend : public Backend
     virtual void onFractalChange() override;
 
     virtual void submitJob() override;
-
-    Constants makeConstants(const Settings& settings, float aspect);
 
     /* ====================== VARIABLES ===================== */
 

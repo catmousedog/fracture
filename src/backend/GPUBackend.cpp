@@ -12,7 +12,17 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, VulkanImage& vulkanImage, VulkanQ
       _vulkanQueue(vulkanQueue),
       _computePipeline(_vulkanCore, vulkanImage, _settings)
 {
-    _computePipeline.updatePipeline(sizeof(Constants)); // fixed for now (same push constants always)
+    uint32_t size;
+    switch (_settings.precision)
+    {
+    case Precision::Float:
+        size = _computePipeline.constantSize<float>();
+        break;
+    case Precision::Double:
+        size = _computePipeline.constantSize<double>();
+        break;
+    }
+    _computePipeline.updatePipeline(size);
 
     // timestamp properties
     _timestampPeriod       = _vulkanCore.getPhysicalDevice().getProperties().limits.timestampPeriod;
@@ -43,7 +53,17 @@ void GPUBackend::onResize()
 void GPUBackend::onFractalChange()
 {
     _computePipeline.readShader(_settings);
-    _computePipeline.updatePipeline(sizeof(Constants));
+    uint32_t size;
+    switch (_settings.precision)
+    {
+    case Precision::Float:
+        size = _computePipeline.constantSize<float>();
+        break;
+    case Precision::Double:
+        size = _computePipeline.constantSize<double>();
+        break;
+    }
+    _computePipeline.updatePipeline(size);
 }
 
 ////////////////////////////////////////////////////////////
@@ -90,8 +110,15 @@ void GPUBackend::submitJob()
     );
 
     // --- Bind Pipeline --- //
-    Constants constants = makeConstants(_settings, aspect);
-    _computePipeline.pushConstants(_vulkanQueue, constants);
+    switch (_settings.precision)
+    {
+    case Precision::Float:
+        _computePipeline.pushConstants<float>(_vulkanQueue, _settings);
+        break;
+    case Precision::Double:
+        _computePipeline.pushConstants<double>(_vulkanQueue, _settings);
+        break;
+    }
     _computePipeline.bind(_vulkanQueue);
 
     // --- Execute --- //
@@ -115,20 +142,6 @@ void GPUBackend::submitJob()
             .image         = _vulkanImage.getComputeImage(),
         }
     );
-}
-
-////////////////////////////////////////////////////////////
-
-GPUBackend::Constants GPUBackend::makeConstants(const Settings& settings, float aspect)
-{
-    Constants constants;
-
-    constants.offset  = glm::vec2(settings.offsetX, settings.offsetY);
-    constants.zoom    = settings.zoom;
-    constants.maxIter = (int)settings.maxIter;
-    constants.aspect  = aspect;
-
-    return constants;
 }
 
 ////////////////////////////////////////////////////////////

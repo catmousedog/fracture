@@ -45,7 +45,7 @@ void Fracture::updateFractal(const Window::Input& input)
         {
             float iterFactor = std::pow(1.1f, input.scroll);
             _settings.maxIter *= iterFactor;
-            _settings.maxIter = std::max(_settings.maxIter, 1.f);
+            _settings.maxIter = std::max(_settings.maxIter, 1);
         }
         else
         {
@@ -68,12 +68,13 @@ void Fracture::updateFractal(const Window::Input& input)
 void Fracture::updateBackend()
 {
     // Fractal type changed
-    if (_settings.fractal != _prevSettings.fractal || _settings.function != _prevSettings.function ||
-        _settings.filter != _prevSettings.filter)
+    if (_settings.precision != _prevSettings.precision || _settings.fractal != _prevSettings.fractal ||
+        _settings.function != _prevSettings.function || _settings.filter != _prevSettings.filter)
     {
-        _prevSettings.fractal  = _settings.fractal;
-        _prevSettings.function = _settings.function;
-        _prevSettings.filter   = _settings.filter;
+        _prevSettings.precision = _settings.precision;
+        _prevSettings.fractal   = _settings.fractal;
+        _prevSettings.function  = _settings.function;
+        _prevSettings.filter    = _settings.filter;
         _backend->changeFractal();
     }
 

@@ -117,11 +117,12 @@ void ComputePipeline::updateDescriptorSet()
 
 void ComputePipeline::readShader(const Backend::Settings& settings)
 {
-    string                fractalName  = settings.fractal.toString();
-    string                functionName = settings.function.toString();
-    string                filterName   = settings.filter.toString();
-    std::vector<uint32_t> code         = compileComputeShader("compute", fractalName, functionName, filterName);
-    _shader                            = _vulkanCore.createShaderModule(code);
+    string                precisionType = settings.precision.toString();
+    string                fractalName   = settings.fractal.toString();
+    string                functionName  = settings.function.toString();
+    string                filterName    = settings.filter.toString();
+    std::vector<uint32_t> code = compileComputeShader("compute", precisionType, fractalName, functionName, filterName);
+    _shader                    = _vulkanCore.createShaderModule(code);
 }
 
 ////////////////////////////////////////////////////////////

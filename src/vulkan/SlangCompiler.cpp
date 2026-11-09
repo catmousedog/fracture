@@ -4,7 +4,9 @@
 #include <slang.h>
 using Slang::ComPtr;
 
-vector<uint32_t> compileComputeShader(string shaderName, string fractalName, string functionName, string filterName)
+vector<uint32_t> compileComputeShader(
+    string shaderName, string precisionType, string fractalName, string functionName, string filterName
+)
 {
     // once, at startup
     ComPtr<slang::IGlobalSession> global;
@@ -19,6 +21,8 @@ vector<uint32_t> compileComputeShader(string shaderName, string fractalName, str
     opt.value.kind      = slang::CompilerOptionValueKind::Int;
     opt.value.intValue0 = 1;
 
+    slang::PreprocessorMacroDesc macros[] = {{"REAL", precisionType.c_str()}};
+
     const char*        searchPaths[] = {"../shaders"};
     slang::SessionDesc sd{};
     sd.targets                  = &target;
@@ -27,6 +31,8 @@ vector<uint32_t> compileComputeShader(string shaderName, string fractalName, str
     sd.searchPathCount          = 1;
     sd.compilerOptionEntries    = &opt;
     sd.compilerOptionEntryCount = 1;
+    sd.preprocessorMacros       = macros;
+    sd.preprocessorMacroCount   = 1;
 
     ComPtr<slang::ISession> session;
     global->createSession(sd, session.writeRef());

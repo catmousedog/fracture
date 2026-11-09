@@ -72,6 +72,8 @@ class VulkanCore
         return _renderFinishedSemaphores[swapChainIndex];
     }
 
+    bool hasShaderFloat64() const { return _physicalDevice.getFeatures2().features.shaderFloat64; }
+
     /* ====================== VARIABLES ===================== */
   private:
     // Window
