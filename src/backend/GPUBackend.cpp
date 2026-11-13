@@ -12,16 +12,7 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, VulkanImage& vulkanImage, VulkanQ
       _vulkanQueue(vulkanQueue),
       _computePipeline(_vulkanCore, vulkanImage, _settings)
 {
-    uint32_t size;
-    switch (_settings.precision)
-    {
-    case Precision::Float:
-        size = _computePipeline.constantSize<float>();
-        break;
-    case Precision::Double:
-        size = _computePipeline.constantSize<double>();
-        break;
-    }
+    uint32_t size = _computePipeline.constantSize<real>();
     _computePipeline.updatePipeline(size);
 
     // timestamp properties
@@ -53,16 +44,7 @@ void GPUBackend::onResize()
 void GPUBackend::onFractalChange()
 {
     _computePipeline.readShader(_settings);
-    uint32_t size;
-    switch (_settings.precision)
-    {
-    case Precision::Float:
-        size = _computePipeline.constantSize<float>();
-        break;
-    case Precision::Double:
-        size = _computePipeline.constantSize<double>();
-        break;
-    }
+    uint32_t size = _computePipeline.constantSize<real>();
     _computePipeline.updatePipeline(size);
 }
 
@@ -110,15 +92,7 @@ void GPUBackend::submitJob()
     );
 
     // --- Bind Pipeline --- //
-    switch (_settings.precision)
-    {
-    case Precision::Float:
-        _computePipeline.pushConstants<float>(_vulkanQueue, _settings);
-        break;
-    case Precision::Double:
-        _computePipeline.pushConstants<double>(_vulkanQueue, _settings);
-        break;
-    }
+    _computePipeline.pushConstants<real>(_vulkanQueue, _settings);
     _computePipeline.bind(_vulkanQueue);
 
     // --- Execute --- //

@@ -94,11 +94,6 @@ void UI::draw(const Backend::Stats& stats)
 
         /* ===================== UI - BEGIN ===================== */
 
-        // --- Precision Settings --- //
-        ImGui::Text("Precision Settings");
-        enumListBox("Precision", _settings.precision);
-        ImGui::Separator();
-
         // --- Fractal Settings --- //
         ImGui::Text("Fractal Settings");
         enumListBox("Fractal", _settings.fractal);

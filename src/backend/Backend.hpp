@@ -17,12 +17,10 @@ class Backend
     // Settings used to store the current state of the backend
     struct Settings
     {
-        Precision precision = Precision::Float;
-
-        Fractal fractal = Fractal::Mandelbrot;
-        double  offsetX = 0.0f, offsetY = 0.0f;
-        double  zoom    = 1.0f;
-        int     maxIter = 100;
+        FractalType fractal = FractalType::Mandelbrot;
+        real        offsetX = 0.0f, offsetY = 0.0f;
+        real        zoom    = 1.0f;
+        int         maxIter = 100;
 
         Function function = Function::Iterative;
 
