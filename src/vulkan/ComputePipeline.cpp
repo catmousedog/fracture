@@ -10,6 +10,8 @@ ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImag
     createDescriptorPool();
     createDescriptorLayout();
     createDescriptorSet();
+    createUniformBuffer();
+    updateDescriptorSet();
     readShader(settings);
 }
 
@@ -17,16 +19,18 @@ ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImag
 
 void ComputePipeline::createDescriptorPool()
 {
-    vk::DescriptorPoolSize poolSize = {
-        .type            = vk::DescriptorType::eStorageImage, //
-        .descriptorCount = 2                                  //
-    };
+    // --- Pool Sizes --- //
+    std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
+        {.type = vk::DescriptorType::eStorageImage, .descriptorCount = 1},
+        {.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1},
+    }};
 
+    // --- Create Descriptor Pool --- //
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets       = 2,
-        .poolSizeCount = 1,
-        .pPoolSizes    = &poolSize
+        .maxSets       = 1,
+        .poolSizeCount = 2,
+        .pPoolSizes    = poolSizes.data()
     };
     _descriptorPool = _vulkanCore.getDevice().createDescriptorPool(poolInfo);
 }
@@ -35,39 +39,42 @@ void ComputePipeline::createDescriptorPool()
 
 void ComputePipeline::createDescriptorLayout()
 {
-    vk::DescriptorSetLayoutBinding bindings{
-        .binding         = 0,
-        .descriptorType  = vk::DescriptorType::eStorageImage,
-        .descriptorCount = 1,
-        .stageFlags      = vk::ShaderStageFlagBits::eCompute
+    // --- Bindings --- //
+    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {
+        {{.binding         = 0,
+          .descriptorType  = vk::DescriptorType::eStorageImage,
+          .descriptorCount = 1,
+          .stageFlags      = vk::ShaderStageFlagBits::eCompute},
+         {.binding         = 1,
+          .descriptorType  = vk::DescriptorType::eUniformBuffer,
+          .descriptorCount = 1,
+          .stageFlags      = vk::ShaderStageFlagBits::eCompute}}
     };
 
+    // --- Create Descriptor Set Layout --- //
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
-        .bindingCount = 1,        //
-        .pBindings    = &bindings //
+        .bindingCount = bindings.size(), //
+        .pBindings    = bindings.data()  //
     };
-    _descriptorSetLayout = vk::raii::DescriptorSetLayout(_vulkanCore.getDevice(), layoutInfo);
+    _descriptorSetLayout = _vulkanCore.getDevice().createDescriptorSetLayout(layoutInfo);
 }
 
 ////////////////////////////////////////////////////////////
 
 void ComputePipeline::createDescriptorSet()
 {
-    std::vector<vk::DescriptorSetLayout> layouts(2, *_descriptorSetLayout);
-    vk::DescriptorSetAllocateInfo        allocInfo{
-        .descriptorPool     = _descriptorPool,
-        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
-        .pSetLayouts        = layouts.data()
+    // --- Allocate Descriptor Set --- //
+    vk::DescriptorSetAllocateInfo allocInfo{
+        .descriptorPool     = _descriptorPool,       //
+        .descriptorSetCount = 1,                     //
+        .pSetLayouts        = &*_descriptorSetLayout //
     };
     _descriptorSet = std::move(_vulkanCore.getDevice().allocateDescriptorSets(allocInfo).front());
-
-    // --- Update Allocated Descriptor --- //
-    updateDescriptorSet();
 }
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::updatePipeline(uint32_t pushConstantSize)
+void ComputePipeline::updatePipeline()
 {
     vk::PipelineShaderStageCreateInfo compShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eCompute, .module = _shader, .pName = "compMain"
@@ -75,7 +82,7 @@ void ComputePipeline::updatePipeline(uint32_t pushConstantSize)
 
     // --- Push Constants --- //
     vk::PushConstantRange pushConstantRange{
-        .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = pushConstantSize
+        .stageFlags = vk::ShaderStageFlagBits::eCompute, .offset = 0, .size = sizeof(Constants)
     };
 
     /* =================== CREATE PIPELINE ================== */
@@ -97,31 +104,59 @@ void ComputePipeline::updatePipeline(uint32_t pushConstantSize)
 
 ////////////////////////////////////////////////////////////
 
+void ComputePipeline::createUniformBuffer()
+{
+    auto [_buffer, _memory] = _vulkanCore.createBuffer(
+        sizeof(UniformBufferObject),
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+    );
+
+    _mapped = _memory.mapMemory(0, sizeof(UniformBufferObject));
+}
+
+////////////////////////////////////////////////////////////
+
 void ComputePipeline::updateDescriptorSet()
 {
+    // --- Image --- //
     vk::DescriptorImageInfo imageInfo{
         .imageView   = _vulkanImage.getComputeImageView(), //
         .imageLayout = vk::ImageLayout::eGeneral           //
     };
-    vk::WriteDescriptorSet descriptorWrites{
-        .dstSet          = _descriptorSet,
-        .dstBinding      = 0,
-        .descriptorCount = 1,
-        .descriptorType  = vk::DescriptorType::eStorageImage,
-        .pImageInfo      = &imageInfo
+    // --- UBO --- //
+    vk::DescriptorBufferInfo bufferInfo{.buffer = _buffer, .offset = 0, .range = sizeof(UniformBufferObject)};
+
+    std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
+        {{.dstSet          = _descriptorSet,
+          .dstBinding      = 0,
+          .descriptorCount = 1,
+          .descriptorType  = vk::DescriptorType::eStorageImage,
+          .pImageInfo      = &imageInfo},
+         {.dstSet          = _descriptorSet,
+          .dstBinding      = 1,
+          .descriptorCount = 1,
+          .descriptorType  = vk::DescriptorType::eUniformBuffer,
+          .pBufferInfo     = &bufferInfo}}
     };
     _vulkanCore.getDevice().updateDescriptorSets(descriptorWrites, {});
 }
 
 ////////////////////////////////////////////////////////////
 
+void ComputePipeline::updateUniformBuffer(const UniformBufferObject& ubo)
+{
+    std::memcpy(_mapped, &ubo, sizeof(UniformBufferObject));
+}
+
+////////////////////////////////////////////////////////////
+
 void ComputePipeline::readShader(const Backend::Settings& settings)
 {
-    string                precisionType = settings.precision.toString();
-    string                fractalName   = settings.fractal.toString();
-    string                functionName  = settings.function.toString();
-    string                filterName    = settings.filter.toString();
-    std::vector<uint32_t> code = compileComputeShader("compute", precisionType, fractalName, functionName, filterName);
+    string                fractalName  = settings.fractal.toString();
+    string                functionName = settings.function.toString();
+    string                filterName   = settings.filter.toString();
+    std::vector<uint32_t> code = compileComputeShader("compute", real_name(), fractalName, functionName, filterName);
     _shader                    = _vulkanCore.createShaderModule(code);
 }
 

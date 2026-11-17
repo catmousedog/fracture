@@ -37,7 +37,7 @@ void VertexBuffer::createVertexBuffer()
     stagingBufferMemory.unmapMemory();
 
     // --- Create Vertex Buffer --- //
-    std::tie(_vertexBuffer, _vertexBufferMemory) = _vulkanCore.createBuffer(
+    auto [_vertexBuffer, _vertexBufferMemory] = _vulkanCore.createBuffer(
         bufferSize,
         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -68,7 +68,7 @@ void VertexBuffer::createIndexBuffer()
     stagingBufferMemory.unmapMemory();
 
     // --- Create Index Buffer --- //
-    std::tie(_indexBuffer, _indexBufferMemory) = _vulkanCore.createBuffer(
+    auto [_indexBuffer, _indexBufferMemory] = _vulkanCore.createBuffer(
         bufferSize,
         vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal

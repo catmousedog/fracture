@@ -6,12 +6,17 @@
 typealias Real  = REAL;
 typealias Real2 = vector<Real, 2>;
 
+static const Real bailout = 65536;
+
 /* ======================== INPUT ======================= */
 [[vk::push_constant]]
 FractalPushConstants pc;
 
 [[vk::binding(0, 0)]]
 RWTexture2D<float4> outputImage;
+
+[[vk::binding(1, 0)]]
+ConstantBuffer<Fractal> fractal;
 
 struct FractalPushConstants {
 	Real2 center;     // point in complex plane the view is centered on
@@ -42,36 +47,44 @@ interface IColor {
 
 /* ====================== FRACTALS ====================== */
 struct Mandelbrot : IFractal {
+	
 	Orbit iterate(Real2 c, int maxIter) {
-		Real2 z = Real2(0.0, 0.0);
-		int i;
+		Real2 z = c; int i;
 		for (i = 0; i < maxIter; i++) {
 			Real x2 = z.x*z.x;
 			Real y2 = z.y*z.y;
 			z = Real2(x2 - y2, 2.0*z.x*z.y) + c; // z = z^2 + c
-			if (x2 + y2 > 65536.0) break;
+			if (x2 + y2 > bailout) break;
 		}
-		Orbit orbit;
-		orbit.iter = i;
-		orbit.z = z;
-		return orbit;
+		Orbit o; o.iter = i; o.z = z; return o;
 	}
 };
 
 struct BurningShip : IFractal {
+
     Orbit iterate(Real2 c, int maxIter) {
-        Real2 z = Real2(0.0, 0.0);
-        int i;
+        Real2 z = c; int i;
         for (i = 0; i < maxIter; i++) {
             Real x2 = z.x*z.x;
             Real y2 = z.y*z.y;
-            if (x2 + y2 > 65536.0) break;
+            if (x2 + y2 > bailout) break;
             z = Real2(x2 - y2, 2.0*abs(z.x*z.y)) + c; // z = (|Re z| + i|Im z|)^2 + c
         }
-        Orbit orbit;
-		orbit.iter = i;
-		orbit.z = z;
-		return orbit;
+        Orbit o; o.iter = i; o.z = z; return o;
+    }
+};
+
+struct Julia : IFractal {
+
+	Real2 c;
+
+    Orbit iterate(Real2 z0, int maxIter) {
+        Real2 z = z0;  int i;
+        for (i = 0; i < maxIter; i++) {
+            z = Real2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c; // z = z^2 + c
+            if (dot(z, z) > bailout) break;
+        }
+        Orbit o; o.iter = i; o.z = z; return o;
     }
 };
 
@@ -110,7 +123,7 @@ void compMain(uint3 id : SV_DispatchThreadID)
     outputImage.GetDimensions(width, height);
     if (id.x >= width || id.y >= height) return;
 
-	Fractal fractal; Function function; Color color;
+	Function function; Color color; // WIP still local
 
 	// sub-image coordinates -> (x, y) = ([-aspect, aspect], [-1, 1])
     float2 uv = (float2(id.xy) + 0.5) / float2(width, height) * 2.0 - 1.0;

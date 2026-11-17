@@ -44,7 +44,6 @@ void GPUBackend::onResize()
 void GPUBackend::onFractalChange()
 {
     _computePipeline.readShader(_settings);
-    uint32_t size = _computePipeline.constantSize<real>();
     _computePipeline.updatePipeline(size);
 }
 
@@ -92,7 +91,7 @@ void GPUBackend::submitJob()
     );
 
     // --- Bind Pipeline --- //
-    _computePipeline.pushConstants<real>(_vulkanQueue, _settings);
+    _computePipeline.pushConstants(_vulkanQueue, _settings);
     _computePipeline.bind(_vulkanQueue);
 
     // --- Execute --- //

@@ -7,16 +7,21 @@ class ComputePipeline
 {
     /* ==================== NESTED CLASS ==================== */
   private:
-    template <typename R>
     struct Constants
     {
-        alignas(2 * sizeof(R)) glm::vec<2, R> offset = {0.0, 0.0};
-        alignas(sizeof(R)) R zoom                    = 1.0;
-        alignas(4) int maxIter                       = 100;
+        alignas(2 * sizeof(real)) glm::vec<2, real> offset = {0.0, 0.0};
+        alignas(sizeof(real)) real zoom                    = 1.0;
+        alignas(4) int maxIter                             = 100;
+    };
+
+    /* ==================== NESTED CLASS ==================== */
+  public:
+    struct UniformBufferObject
+    {
     };
 
     /* ======================== SETUP ======================= */
-  public:
+
     ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage, const Backend::Settings& settings);
 
   private:
@@ -28,26 +33,21 @@ class ComputePipeline
 
     /* ================== PUBLIC FUNCTIONS ================== */
   public:
-    template <typename R>
-    uint32_t constantSize() const
-    {
-        return sizeof(Constants<R>);
-    }
+    void updatePipeline();
 
-    void updatePipeline(uint32_t pushConstantSize);
+    void createUniformBuffer();
 
-    template <typename R>
     void pushConstants(VulkanQueue& computeQueue, const Backend::Settings& settings)
     {
-        Constants<R> constants;
+        Constants constants;
 
-        constants.offset  = glm::vec<2, double>(settings.offsetX, settings.offsetY);
+        constants.offset  = glm::vec<2, real>(settings.offsetX, settings.offsetY);
         constants.zoom    = settings.zoom;
         constants.maxIter = (int)settings.maxIter;
 
         auto& commandBuffer = computeQueue.getCommandBuffer();
         commandBuffer.pushConstants(
-            _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Constants<R>), &constants
+            _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Constants), &constants
         );
     }
 
@@ -68,6 +68,11 @@ class ComputePipeline
     vk::raii::DescriptorPool      _descriptorPool      = nullptr;
     vk::raii::DescriptorSetLayout _descriptorSetLayout = nullptr;
     vk::raii::DescriptorSet       _descriptorSet       = nullptr;
+
+    // UBO
+    vk::raii::Buffer       _buffer = nullptr;
+    vk::raii::DeviceMemory _memory = nullptr;
+    void*                  _mapped = nullptr;
 
     vk::raii::ShaderModule _shader = nullptr;
 };

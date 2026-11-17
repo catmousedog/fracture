@@ -20,7 +20,7 @@ class Backend
         FractalType fractal = FractalType::Mandelbrot;
         real        offsetX = 0.0f, offsetY = 0.0f;
         real        zoom    = 1.0f;
-        int         maxIter = 100;
+        float       maxIter = 100; // allow decimals internally for smooth increasing
 
         Function function = Function::Iterative;
 

@@ -45,7 +45,7 @@ void Fracture::updateFractal(const Window::Input& input)
         {
             float iterFactor = std::pow(1.1f, input.scroll);
             _settings.maxIter *= iterFactor;
-            _settings.maxIter = std::max(_settings.maxIter, 1);
+            _settings.maxIter = std::max(_settings.maxIter, 1.f);
         }
         else
         {
