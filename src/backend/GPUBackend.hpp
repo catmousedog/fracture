@@ -1,10 +1,8 @@
 #pragma once
 
 #include "backend/Backend.hpp"
-#include "fractals/Precision.hpp"
 #include "vulkan/ComputePipeline.hpp"
 
-#include <concepts>
 #include <glm/glm.hpp>
 
 class GPUBackend : public Backend
@@ -21,7 +19,7 @@ class GPUBackend : public Backend
 
     virtual void onFractalChange() override;
 
-    virtual void submitJob() override;
+    virtual void recompute() override;
 
     /* ====================== VARIABLES ===================== */
 

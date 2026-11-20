@@ -30,6 +30,22 @@ void enumListBox(const char* label, T& current)
     }
 }
 
+template <size_t N>
+void listBox(const char* label, std::array<std::string_view, N> list, size_t current)
+{
+    const float h = ImGui::GetTextLineHeightWithSpacing() * (N + 0.25f) + ImGui::GetStyle().FramePadding.y * 2.0f;
+    if (ImGui::BeginListBox(label, ImVec2(0, h)))
+    {
+        for (size_t i = 0; i < N; i++)
+        {
+            if (ImGui::Selectable(list[i].data(), i == current))
+                current = i;
+        }
+
+        ImGui::EndListBox();
+    }
+}
+
 } // namespace
 
 ////////////////////////////////////////////////////////////
@@ -96,17 +112,20 @@ void UI::draw(const Backend::Stats& stats)
 
         // --- Fractal Settings --- //
         ImGui::Text("Fractal Settings");
-        enumListBox("Fractal", _settings.fractal);
+        // enumListBox("Fractal", _settings.fractal);
+        // variantListBox("Fractal", _settings.fractal);
+        auto fractalList = Fractal::variantNameList();
+        listBox("Fractal", fractalList, _settings.fractal.index());
         ImGui::Separator();
 
         // --- Function Settings --- //
         ImGui::Text("Function Settings");
-        enumListBox("Function", _settings.function);
+        // enumListBox("Function", _settings.function);
         ImGui::Separator();
 
         // --- Filter Settings --- //
         ImGui::Text("Filter Settings");
-        enumListBox("Filter", _settings.filter);
+        // enumListBox("Filter", _settings.filter);
         ImGui::Separator();
 
         auto ns = std::chrono::nanoseconds{(long long)stats.ns};

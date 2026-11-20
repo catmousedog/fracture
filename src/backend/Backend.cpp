@@ -6,7 +6,7 @@ void Backend::update()
 {
     if (_dirty)
     {
-        submitJob(); // recompute
+        recompute(); // recompute
         _dirty = false;
     }
 }
@@ -21,10 +21,11 @@ void Backend::resize()
 
 ////////////////////////////////////////////////////////////
 
+// update this behaviour. Make it better. Also look in Fracture
 void Backend::changeFractal()
 {
-    _dirty = true;
     onFractalChange();
+    _dirty = true;
 }
 
 ////////////////////////////////////////////////////////////

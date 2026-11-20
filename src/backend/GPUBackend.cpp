@@ -12,8 +12,7 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, VulkanImage& vulkanImage, VulkanQ
       _vulkanQueue(vulkanQueue),
       _computePipeline(_vulkanCore, vulkanImage, _settings)
 {
-    uint32_t size = _computePipeline.constantSize<real>();
-    _computePipeline.updatePipeline(size);
+    _computePipeline.updatePipeline();
 
     // timestamp properties
     _timestampPeriod       = _vulkanCore.getPhysicalDevice().getProperties().limits.timestampPeriod;
@@ -36,7 +35,8 @@ GPUBackend::GPUBackend(VulkanCore& vulkanCore, VulkanImage& vulkanImage, VulkanQ
 
 void GPUBackend::onResize()
 {
-    _computePipeline.updateDescriptorSet();
+    _computePipeline.updateDescriptorSet(_settings.fractal.size());
+    _computePipeline.updateUniformBuffer(_settings.fractal);
 }
 
 ////////////////////////////////////////////////////////////
@@ -44,12 +44,14 @@ void GPUBackend::onResize()
 void GPUBackend::onFractalChange()
 {
     _computePipeline.readShader(_settings);
-    _computePipeline.updatePipeline(size);
+    _computePipeline.updatePipeline();
+
+    // recreate UBO
 }
 
 ////////////////////////////////////////////////////////////
 
-void GPUBackend::submitJob()
+void GPUBackend::recompute()
 {
     uint32_t frameIndex = _vulkanQueue.getFrameIndex();
     uint32_t queryStart = 2 * frameIndex;

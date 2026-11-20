@@ -17,10 +17,10 @@ class Backend
     // Settings used to store the current state of the backend
     struct Settings
     {
-        FractalType fractal = FractalType::Mandelbrot;
-        real        offsetX = 0.0f, offsetY = 0.0f;
-        real        zoom    = 1.0f;
-        float       maxIter = 100; // allow decimals internally for smooth increasing
+        Fractal fractal = Mandelbrot{};
+        real    offsetX = 0.0f, offsetY = 0.0f;
+        real    zoom    = 1.0f;
+        float   maxIter = 100; // allow decimals internally for smooth increasing
 
         Function function = Function::Iterative;
 
@@ -61,7 +61,7 @@ class Backend
 
     virtual void onFractalChange() = 0;
 
-    virtual void submitJob() = 0;
+    virtual void recompute() = 0;
 
     /* ================= GETTERS AND SETTERS ================ */
   public:

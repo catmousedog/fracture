@@ -67,14 +67,24 @@ void Fracture::updateFractal(const Window::Input& input)
 
 void Fracture::updateBackend()
 {
-    // Fractal type changed
-    if (_settings.fractal != _prevSettings.fractal || _settings.function != _prevSettings.function ||
-        _settings.filter != _prevSettings.filter)
+    // Fractal changed
+    if (_settings.fractal != _prevSettings.fractal)
     {
-        _prevSettings.fractal  = _settings.fractal;
+        // Fractal type changed
+        if (_settings.fractal.name() != _prevSettings.fractal.name())
+            _backend->changeFractal();
+
+        _prevSettings.fractal = _settings.fractal;
+    }
+    // Function changed
+    if (_settings.function != _prevSettings.function)
+    {
         _prevSettings.function = _settings.function;
-        _prevSettings.filter   = _settings.filter;
-        _backend->changeFractal();
+    }
+    // FIlter changed
+    if (_settings.filter != _prevSettings.filter)
+    {
+        _prevSettings.filter = _settings.filter;
     }
 
     // other Fractal settings changed

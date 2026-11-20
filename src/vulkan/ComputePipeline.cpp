@@ -10,8 +10,8 @@ ComputePipeline::ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImag
     createDescriptorPool();
     createDescriptorLayout();
     createDescriptorSet();
-    createUniformBuffer();
-    updateDescriptorSet();
+    createUniformBuffer(settings.fractal.size());
+    updateDescriptorSet(settings.fractal.size());
     readShader(settings);
 }
 
@@ -74,6 +74,19 @@ void ComputePipeline::createDescriptorSet()
 
 ////////////////////////////////////////////////////////////
 
+void ComputePipeline::createUniformBuffer(size_t uboSize)
+{
+    auto [_buffer, _memory] = _vulkanCore.createBuffer(
+        uboSize,
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+    );
+
+    _mapped = _memory.mapMemory(0, uboSize);
+}
+
+////////////////////////////////////////////////////////////
+
 void ComputePipeline::updatePipeline()
 {
     vk::PipelineShaderStageCreateInfo compShaderStageInfo{
@@ -104,28 +117,16 @@ void ComputePipeline::updatePipeline()
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::createUniformBuffer()
-{
-    auto [_buffer, _memory] = _vulkanCore.createBuffer(
-        sizeof(UniformBufferObject),
-        vk::BufferUsageFlagBits::eUniformBuffer,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-    );
-
-    _mapped = _memory.mapMemory(0, sizeof(UniformBufferObject));
-}
-
-////////////////////////////////////////////////////////////
-
-void ComputePipeline::updateDescriptorSet()
+void ComputePipeline::updateDescriptorSet(size_t uboSize)
 {
     // --- Image --- //
     vk::DescriptorImageInfo imageInfo{
         .imageView   = _vulkanImage.getComputeImageView(), //
         .imageLayout = vk::ImageLayout::eGeneral           //
     };
+
     // --- UBO --- //
-    vk::DescriptorBufferInfo bufferInfo{.buffer = _buffer, .offset = 0, .range = sizeof(UniformBufferObject)};
+    vk::DescriptorBufferInfo bufferInfo{.buffer = _buffer, .offset = 0, .range = uboSize};
 
     std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
         {{.dstSet          = _descriptorSet,
@@ -144,20 +145,10 @@ void ComputePipeline::updateDescriptorSet()
 
 ////////////////////////////////////////////////////////////
 
-void ComputePipeline::updateUniformBuffer(const UniformBufferObject& ubo)
+void ComputePipeline::updateUniformBuffer(const Fractal& fractal)
 {
-    std::memcpy(_mapped, &ubo, sizeof(UniformBufferObject));
-}
-
-////////////////////////////////////////////////////////////
-
-void ComputePipeline::readShader(const Backend::Settings& settings)
-{
-    string                fractalName  = settings.fractal.toString();
-    string                functionName = settings.function.toString();
-    string                filterName   = settings.filter.toString();
-    std::vector<uint32_t> code = compileComputeShader("compute", real_name(), fractalName, functionName, filterName);
-    _shader                    = _vulkanCore.createShaderModule(code);
+    std::span<std::byte> mapped(static_cast<std::byte*>(_mapped), fractal.size());
+    fractal.pack(mapped);
 }
 
 ////////////////////////////////////////////////////////////
@@ -169,6 +160,17 @@ void ComputePipeline::bind(VulkanQueue& computeQueue)
     // --- Bind Descriptor Set --- //
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, _pipelineLayout, 0, *_descriptorSet, nullptr);
+}
+
+////////////////////////////////////////////////////////////
+
+void ComputePipeline::readShader(const Backend::Settings& settings)
+{
+    string                fractalName  = std::string(settings.fractal.name());
+    string                functionName = settings.function.toString();
+    string                filterName   = settings.filter.toString();
+    std::vector<uint32_t> code = compileComputeShader("compute", real_name(), fractalName, functionName, filterName);
+    _shader                    = _vulkanCore.createShaderModule(code);
 }
 
 ////////////////////////////////////////////////////////////

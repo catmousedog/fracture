@@ -9,19 +9,14 @@ class ComputePipeline
   private:
     struct Constants
     {
-        alignas(2 * sizeof(real)) glm::vec<2, real> offset = {0.0, 0.0};
-        alignas(sizeof(real)) real zoom                    = 1.0;
-        alignas(4) int maxIter                             = 100;
-    };
-
-    /* ==================== NESTED CLASS ==================== */
-  public:
-    struct UniformBufferObject
-    {
+        alignas(sizeof(real)) real offsetX = 0.;
+        alignas(sizeof(real)) real offsetY = 0.;
+        alignas(sizeof(real)) real zoom    = 1.;
+        alignas(4) int maxIter             = 100;
     };
 
     /* ======================== SETUP ======================= */
-
+  public:
     ComputePipeline(VulkanCore& vulkanCore, VulkanImage& vulkanImage, const Backend::Settings& settings);
 
   private:
@@ -31,17 +26,26 @@ class ComputePipeline
 
     void createDescriptorSet();
 
+    void createUniformBuffer(size_t uboSize);
+
     /* ================== PUBLIC FUNCTIONS ================== */
   public:
     void updatePipeline();
 
-    void createUniformBuffer();
+    void updateDescriptorSet(size_t uboSize);
+
+    void updateUniformBuffer(const Fractal& fractal);
+
+    void bind(VulkanQueue& computeQueue);
+
+    void readShader(const Backend::Settings& settings);
 
     void pushConstants(VulkanQueue& computeQueue, const Backend::Settings& settings)
     {
         Constants constants;
 
-        constants.offset  = glm::vec<2, real>(settings.offsetX, settings.offsetY);
+        constants.offsetX = settings.offsetX;
+        constants.offsetY = settings.offsetY;
         constants.zoom    = settings.zoom;
         constants.maxIter = (int)settings.maxIter;
 
@@ -50,12 +54,6 @@ class ComputePipeline
             _pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Constants), &constants
         );
     }
-
-    void updateDescriptorSet();
-
-    void readShader(const Backend::Settings& settings);
-
-    void bind(VulkanQueue& computeQueue);
 
     /* ====================== VARIABLES ===================== */
   private:
